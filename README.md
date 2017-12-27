@@ -1,5 +1,10 @@
 <h1 align="center">Caterpillar</h1>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.6-orange.svg?maxAge=86400" alt="python: 3.6">
+  <img src="https://img.shields.io/badge/license-MIT-blue.svg?maxAge=86400" alt="license: MIT">
+</p>
+
 <p align="center"><img src="https://user-images.githubusercontent.com/4149852/34367011-a9b11be8-ea72-11e7-8a96-ce34dae1eb0f.jpg" alt="Caterpillar" width="400" height="242"></p>
 
 `caterpillar` is a hardened HLS merger. It takes an HTTP Live Streaming VOD URL (typically an .m3u8 URL), downloads the video segments, and attempts to merge them into a single, coherent file. It is specially designed to combat timestamp discontinuities (symptom: a naive FFmpeg run spews tons of "Non-monotonous DTS in output stream" warning messages and ends up with a useless file with completely broken timestamps).
