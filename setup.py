@@ -10,7 +10,7 @@ with open(HERE / 'caterpillar' / 'version.py') as fp:
     exec(fp.read())
 
 setuptools.setup(
-    name='caterpillar',
+    name='caterpillar-hls',
     version=__version__,
     description='Hardened HLS merger',
     long_description='See https://github.com/zmwangx/caterpillar#readme.',
