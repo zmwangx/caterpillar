@@ -8,7 +8,7 @@ from typing import Tuple
 
 import m3u8
 
-from .utils import chdir, generate_m3u8, logger
+from .utils import abspath, chdir, generate_m3u8, logger
 
 
 # Returns None if the merge succeeds, or the basename of the first bad
@@ -75,6 +75,9 @@ def split_m3u8(source: pathlib.Path, destinations: Tuple[pathlib.Path, pathlib.P
 # m3u8_file should not be named '1.m3u8'; in fact, avoid naming it
 # '<number>.m3u8', or it may be overwritten in the process.
 def incremental_merge(m3u8_file: pathlib.Path, output: pathlib.Path):
+    # Resolve output so that we don't write to a different relative path
+    # later when we run FFmpeg from a different pwd.
+    output = abspath(output)
     directory = m3u8_file.parent
     playlist_index = 1
     playlist = directory / f'{playlist_index}.m3u8'

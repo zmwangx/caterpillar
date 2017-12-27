@@ -1,6 +1,7 @@
 import contextlib
 import logging
 import os
+import pathlib
 from typing import Iterable, Tuple
 
 
@@ -25,6 +26,16 @@ def excname(value):
         return etype.__name__
     else:
         return '%s.%s' % (etype.__module__, etype.__name__)
+
+
+# Resolve a pathlib.Path that may not exist yet. Assumes that the parent
+# of the path already exists.
+#
+# This is to workaround pathlib.Path.resolve() behavior on Windows: if
+# the relative path does not already exist, the return value is not an
+# absolute path.
+def abspath(path: pathlib.Path) -> pathlib.Path:
+    return path.parent.resolve().joinpath(path.name)
 
 
 @contextlib.contextmanager
