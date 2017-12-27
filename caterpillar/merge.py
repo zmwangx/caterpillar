@@ -151,7 +151,7 @@ def incremental_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
                        '-f', 'concat', '-i', 'concat.txt',
                        '-c', 'copy', '-movflags', 'faststart', '-y', output.as_posix()]
         elif concat_method == 'concat_protocol':
-            ffmpeg_input = 'concat:' + '|'.join(f'{idx}.ts' for idx in range(1, playlist_index + 1))
+            ffmpeg_input = 'concat:' + '|'.join(f'{i}.ts' for i in range(1, playlist_index + 1))
             command = ['ffmpeg', '-hide_banner', '-loglevel', 'info', '-i', ffmpeg_input,
                        '-c', 'copy', '-movflags', 'faststart', '-y', output.as_posix()]
         else:
