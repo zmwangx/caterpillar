@@ -11,6 +11,23 @@
 
 `caterpillar` supports [up to version 3](https://tools.ietf.org/html/rfc8216#section-7) of the HTTP Live Streaming protocol (VOD only; non-VOD playlists are treated as VOD, and may result in unexpected consequences).
 
+## Contents
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Dependencies](#dependencies)
+- [Installation](#installation)
+  - [For end users](#for-end-users)
+  - [For developers and beta testers](#for-developers-and-beta-testers)
+- [Usage](#usage)
+- [Notes](#notes)
+- [Etymology](#etymology)
+- [Copyright](#copyright)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Dependencies
 
 A recent version of [FFmpeg](https://ffmpeg.org/download.html).
