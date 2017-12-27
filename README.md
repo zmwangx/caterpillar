@@ -17,11 +17,38 @@ A recent version of [FFmpeg](https://ffmpeg.org/download.html).
 
 ## Installation
 
+Python 3.6 or later is required.
+
+### For end users
+
+To install,
+
+```
+pip install caterpillar-hls
+```
+
+To upgrade to the latest version,
+
+```
+pip install -U caterpillar-hls
+```
+
+### For developers and beta testers
+
+To install from the master branch,
+
 ```
 git clone https://github.com/zmwangx/caterpillar.git
 cd caterpillar
-python3 setup.py develop
+python setup.py develop
 caterpillar -h
+```
+
+To update to the latest master,
+
+```
+cd /path/to/caterpillar
+git pull origin master
 ```
 
 ## Usage
