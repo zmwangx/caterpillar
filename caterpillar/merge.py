@@ -4,6 +4,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from typing import Tuple
 
 import m3u8
@@ -50,7 +51,24 @@ def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
         if error_pattern.search(line):
             assert last_read_segment
             logger.warning(f'DTS jump detected in {last_read_segment}')
+            p.stderr.close()
             p.terminate()
+            # Deal with Windows process and file ownership idiosyncrasies.
+            # On *ix this is immediate.
+            while True:
+                try:
+                    output.unlink()
+                except PermissionError:
+                    # On Windows, the ffmpeg subprocess is not yet
+                    # cleaned up and is still clinging to this file;
+                    # wait until it is released, or the next subprocess
+                    # may not even be able to successfully overwrite
+                    # this file.
+                    time.sleep(0.1)
+                except FileNotFoundError:
+                    break
+                else:
+                    break
             return last_read_segment
     returncode = p.wait()
     if returncode != 0:
