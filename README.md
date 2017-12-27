@@ -1,6 +1,7 @@
 <h1 align="center">Caterpillar</h1>
 
 <p align="center">
+  <a href="https://pypi.python.org/pypi/caterpillar-hls"><img src="https://img.shields.io/pypi/v/caterpillar-hls.svg?maxAge=3600" alt="pypi"></a>
   <img src="https://img.shields.io/badge/python-3.6-orange.svg?maxAge=86400" alt="python: 3.6">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg?maxAge=86400" alt="license: MIT">
 </p>
