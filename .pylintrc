@@ -1,0 +1,5 @@
+[MESSAGES CONTROL]
+disable=R,C,broad-except,global-statement
+
+[REPORTS]
+score=no

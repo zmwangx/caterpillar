@@ -39,7 +39,7 @@ def resumable_download(url: str, file: pathlib.Path) -> bool:
 
 # Returns a bool indicating success (True) or failure (False).
 def resumable_download_with_retries(url: str, file: pathlib.Path,
-                                    max_retries : int = 2) -> bool:
+                                    max_retries: int = 2) -> bool:
     incomplete_file = file.with_suffix(file.suffix + '.incomplete')
 
     # If the file, without the .incomplete suffix, is already present,
@@ -71,7 +71,7 @@ def download_m3u8_file(m3u8_url: str, file: pathlib.Path) -> bool:
 
 # Returns a bool indicating success (True) or failure (False).
 def download_segment(url: str, index: int, directory: pathlib.Path,
-                     max_retries : int = 2) -> bool:
+                     max_retries: int = 2) -> bool:
     return resumable_download_with_retries(url, directory / f'{index}.ts', max_retries=max_retries)
 
 
