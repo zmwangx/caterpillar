@@ -2,6 +2,7 @@
 
 import argparse
 import pathlib
+import shutil
 import sys
 
 from . import download, merge
@@ -21,6 +22,8 @@ def main():
     add('-j', '--jobs', type=int, default=None,
         help='''maximum number of concurrent downloads (default is twice
         the number of CPU cores, including virtual cores)''')
+    add('-k', '--keep', action='store_true',
+        help='keep intermediate files even after a successful merge')
     add('-v', '--verbose', action='count', default=0,
         help='increase logging verbosity (can be specified multiple times)')
     add('-q', '--quiet', action='count', default=0,
@@ -63,6 +66,8 @@ def main():
             logger.critical('failed to download some segments')
             return 1
         merge.incremental_merge(local_m3u8_file, args.output)
+        if not args.keep:
+            shutil.rmtree(working_directory)
     except RuntimeError as e:
         logger.critical(e)
         return 1

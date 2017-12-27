@@ -28,7 +28,7 @@ caterpillar -h
 
 ```console
 $ caterpillar -h
-usage: caterpillar [-h] [-f] [-j JOBS] [-v] [-q] [-V] m3u8_url output
+usage: caterpillar [-h] [-f] [-j JOBS] [-k] [-v] [-q] [-V] m3u8_url output
 
 positional arguments:
   m3u8_url              the VOD URL
@@ -40,6 +40,7 @@ optional arguments:
   -j JOBS, --jobs JOBS  maximum number of concurrent downloads (default is
                         twice the number of CPU cores, including virtual
                         cores)
+  -k, --keep            keep intermediate files even after a successful merge
   -v, --verbose         increase logging verbosity (can be specified multiple
                         times)
   -q, --quiet           decrease logging verbosity (can be specified multiple
