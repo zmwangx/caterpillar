@@ -18,7 +18,7 @@ def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path) -> str:
     regular_pattern = re.compile(r"Opening '(?P<path>.*\.ts)' for reading")
     error_pattern = re.compile('Non-monotonous DTS in output stream')
     command = ['ffmpeg', '-hide_banner', '-loglevel', 'info',
-               '-f', 'hls', '-i', m3u8_file, '-c', 'copy', '-y', output]
+               '-f', 'hls', '-i', str(m3u8_file), '-c', 'copy', '-y', str(output)]
     p = subprocess.Popen(command, stdin=subprocess.DEVNULL, stderr=subprocess.PIPE,
                          universal_newlines=True, bufsize=1,
                          encoding='utf-8', errors='backslashreplace')
@@ -101,7 +101,7 @@ def incremental_merge(m3u8_file: pathlib.Path, output: pathlib.Path):
 
         command = ['ffmpeg', '-hide_banner', '-loglevel', 'info',
                    '-f', 'concat', '-i', 'concat.txt',
-                   '-c', 'copy', '-movflags', 'faststart', '-y', output]
+                   '-c', 'copy', '-movflags', 'faststart', '-y', str(output)]
         try:
             logger.info('merging intermediate products...')
             subprocess.run(command, stdin=subprocess.DEVNULL)
