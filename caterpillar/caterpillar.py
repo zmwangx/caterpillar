@@ -26,6 +26,12 @@ def main():
         the number of CPU cores, including virtual cores)''')
     add('-k', '--keep', action='store_true',
         help='keep intermediate files even after a successful merge')
+    add('-m', '--concat-method',
+        choices=['concat_demuxer', 'concat_protocol', '0', '1'],
+        default='concat_demuxer',
+        help='''method for concatenating intermediate files (default is
+        'concat_demuxer'); see https://github.com/zmwangx/caterpillar/#notes
+        for details''')
     add('-v', '--verbose', action='count', default=0,
         help='increase logging verbosity (can be specified multiple times)')
     add('-q', '--quiet', action='count', default=0,
@@ -72,6 +78,11 @@ def main():
         logger.critical('jobs must be positive')
         return 1
 
+    if args.concat_method == '0':
+        args.concat_method = 'concat_demuxer'
+    elif args.concat_method == '1':
+        args.concat_method = 'concat_protocol'
+
     increase_logging_verbosity(args.verbose - args.quiet)
 
     remote_m3u8_url = m3u8_url
@@ -90,7 +101,8 @@ def main():
                                                jobs=args.jobs):
             logger.critical('failed to download some segments')
             return 1
-        merge.incremental_merge(local_m3u8_file, output)
+        merge.incremental_merge(local_m3u8_file, output,
+                                concat_method=args.concat_method)
         if not args.keep:
             shutil.rmtree(working_directory)
     except RuntimeError as e:

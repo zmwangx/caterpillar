@@ -108,9 +108,17 @@ def split_m3u8(source: pathlib.Path, destinations: Tuple[pathlib.Path, pathlib.P
     logger.info(f'wrote {dest2}')
 
 
+# concat_method is either 'concat_demuxer'[1] or 'concat_protocol'[2].
+# Sometimes one works better than other, but there's no clear winner in all
+# cases.
+#
 # m3u8_file should not be named '1.m3u8'; in fact, avoid naming it
 # '<number>.m3u8', or it may be overwritten in the process.
-def incremental_merge(m3u8_file: pathlib.Path, output: pathlib.Path):
+#
+# [1] https://ffmpeg.org/ffmpeg-all.html#concat-1
+# [2] https://ffmpeg.org/ffmpeg-all.html#concat-2
+def incremental_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
+                      concat_method: str = 'concat_demuxer'):
     # Resolve output so that we don't write to a different relative path
     # later when we run FFmpeg from a different pwd.
     output = abspath(output)
@@ -134,13 +142,21 @@ def incremental_merge(m3u8_file: pathlib.Path, output: pathlib.Path):
         playlist = next_playlist
 
     with chdir(intermediate_dir):
-        with open('concat.txt', 'w') as fp:
-            for index in range(1, playlist_index + 1):
-                print(f'file {index}.ts', file=fp)
+        if concat_method == 'concat_demuxer':
+            with open('concat.txt', 'w') as fp:
+                for index in range(1, playlist_index + 1):
+                    print(f'file {index}.ts', file=fp)
 
-        command = ['ffmpeg', '-hide_banner', '-loglevel', 'info',
-                   '-f', 'concat', '-i', 'concat.txt',
-                   '-c', 'copy', '-movflags', 'faststart', '-y', output.as_posix()]
+            command = ['ffmpeg', '-hide_banner', '-loglevel', 'info',
+                       '-f', 'concat', '-i', 'concat.txt',
+                       '-c', 'copy', '-movflags', 'faststart', '-y', output.as_posix()]
+        elif concat_method == 'concat_protocol':
+            ffmpeg_input = 'concat:' + '|'.join(f'{idx}.ts' for idx in range(1, playlist_index + 1))
+            command = ['ffmpeg', '-hide_banner', '-loglevel', 'info', '-i', ffmpeg_input,
+                       '-c', 'copy', '-movflags', 'faststart', '-y', output.as_posix()]
+        else:
+            raise NotImplementedError(f"unrecognized concat method '{concat_method}'")
+
         try:
             logger.info('merging intermediate products...')
             subprocess.run(command, stdin=subprocess.DEVNULL)
