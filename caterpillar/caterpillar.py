@@ -4,6 +4,7 @@ import argparse
 import pathlib
 import shutil
 import sys
+import urllib.parse
 
 from . import download, merge
 from .utils import logger, increase_logging_verbosity
@@ -15,8 +16,9 @@ def main():
     add = parser.add_argument
     add('m3u8_url',
         help='the VOD URL')
-    add('output', type=pathlib.Path,
-        help='path to the final output file')
+    add('output', nargs='?', type=pathlib.Path, default=None,
+        help='''path to the final output file (default is a .ts file in the
+        current directory with the basename of the VOD URL)''')
     add('-f', '--force', action='store_true',
         help='overwrite the output file if it already exists')
     add('-j', '--jobs', type=int, default=None,
@@ -31,26 +33,49 @@ def main():
     add('-V', '--version', action='version', version=__version__)
     args = parser.parse_args()
 
+    m3u8_url = args.m3u8_url
+    output = args.output
+
+    if output is None:
+        stem = pathlib.Path(urllib.parse.urlsplit(m3u8_url).path).stem
+        if not stem or stem.startswith('.'):
+            logger.critical(f'cannot auto-determine an output file from {m3u8_url}')
+            return 1
+        output = pathlib.Path(f'{stem}.mp4')
+        logger.info(f'output not specified; using {output}')
+
+    if not output.parent.exists():
+        logger.critical(f'{output.parent} does not exist')
+        return 1
+
+    if not output.suffix:
+        logger.critical(f'output must have a suffix, e.g., .mp4')
+        return 1
+
+    if output.exists() and not args.force:
+        logger.critical(f'{output} already exists; specify --force to overwrite it')
+        return 1
+
+    if not output.exists():
+        # Make sure output (especially if it's auto-deduced from URL, which
+        # might contain reserved characters on Windows) is a valid path and is
+        # writable.
+        try:
+            with open(output, 'wb'):
+                pass
+            output.unlink()
+        except OSError:
+            logger.critical(f'{output} is not a valid path or is not writable')
+            return 1
+
     if args.jobs is not None and args.jobs <= 0:
         logger.critical('jobs must be positive')
         return 1
 
-    if not args.output.parent.exists():
-        logger.critical(f'{args.output.parent} does not exist')
-        return 1
-
-    if not args.output.suffix:
-        logger.critical(f'output must have a suffix, e.g., .mp4')
-        return 1
-
-    if args.output.exists() and not args.force:
-        logger.critical(f'{args.output} already exists; specify --force to overwrite it')
-        return 1
-
     increase_logging_verbosity(args.verbose - args.quiet)
 
-    remote_m3u8_url = args.m3u8_url
-    working_directory = args.output.with_suffix('')
+    remote_m3u8_url = m3u8_url
+    working_directory = output.with_suffix('')
     working_directory.mkdir(exist_ok=True)
     remote_m3u8_file = working_directory / 'remote.m3u8'
     local_m3u8_file = working_directory / 'local.m3u8'
@@ -65,7 +90,7 @@ def main():
                                                jobs=args.jobs):
             logger.critical('failed to download some segments')
             return 1
-        merge.incremental_merge(local_m3u8_file, args.output)
+        merge.incremental_merge(local_m3u8_file, output)
         if not args.keep:
             shutil.rmtree(working_directory)
     except RuntimeError as e:
