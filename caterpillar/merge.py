@@ -11,9 +11,24 @@ import m3u8
 from .utils import abspath, chdir, generate_m3u8, logger
 
 
+# If ignore_errors is True, blast through non-monotonous DTS errors
+# without looking back. We use this after on a splitted playlist deemed
+# all good, since for some mysterious reason, probably due to artifacts
+# in some hopelessly bad segments, it seems possible that a
+# non-monotonous DTS error would manifest only on the second pass, after
+# the playlist is splitted. An example:
+#
+#   http://live.us.sinaimg.cn/000XDYqUjx07gRaRHSCz070d010002TZ0k01.m3u8
+#
+# On the first pass of merging 4.m3u8, we only get the non-monotonous
+# DTS error at 13.ts, but after splitting, on the second pass, we also
+# get a non-monotonous error from 12.ts, following a "missing picture in
+# access unit with size 6" error.
+#
 # Returns None if the merge succeeds, or the basename of the first bad
 # segment if non-monotonous DTS is detected.
-def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path) -> str:
+def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
+                  ignore_errors: bool = False) -> str:
     logger.info(f'attempting to merge {m3u8_file} into {output}')
     regular_pattern = re.compile(r"Opening '(?P<path>.*\.ts)' for reading")
     error_pattern = re.compile('Non-monotonous DTS in output stream')
@@ -26,6 +41,8 @@ def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path) -> str:
     for line in p.stderr:
         sys.stderr.write(line)
         sys.stderr.flush()
+        if ignore_errors:
+            continue
         m = regular_pattern.search(line)
         if m:
             last_read_segment = os.path.basename(m['path'])
@@ -33,6 +50,7 @@ def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path) -> str:
         if error_pattern.search(line):
             assert last_read_segment
             logger.warning(f'DTS jump detected in {last_read_segment}')
+            p.terminate()
             return last_read_segment
     returncode = p.wait()
     if returncode != 0:
@@ -94,7 +112,7 @@ def incremental_merge(m3u8_file: pathlib.Path, output: pathlib.Path):
         playlist_index += 1
         next_playlist = directory / f'{playlist_index}.m3u8'
         split_m3u8(playlist, (playlist, next_playlist), split_point)
-        split_point = attempt_merge(playlist, merge_dest)
+        attempt_merge(playlist, merge_dest, ignore_errors=True)
         playlist = next_playlist
 
     with chdir(intermediate_dir):
