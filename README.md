@@ -28,11 +28,15 @@ caterpillar -h
 
 ```console
 $ caterpillar -h
-usage: caterpillar [-h] [-f] [-j JOBS] [-k] [-v] [-q] [-V] m3u8_url output
+usage: caterpillar [-h] [-f] [-j JOBS] [-k]
+                   [-m {concat_demuxer,concat_protocol,0,1}] [-v] [-q] [-V]
+                   m3u8_url [output]
 
 positional arguments:
   m3u8_url              the VOD URL
-  output                path to the final output file
+  output                path to the final output file (default is a .ts file
+                        in the current directory with the basename of the VOD
+                        URL)
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -41,12 +45,25 @@ optional arguments:
                         twice the number of CPU cores, including virtual
                         cores)
   -k, --keep            keep intermediate files even after a successful merge
+  -m {concat_demuxer,concat_protocol,0,1}, --concat-method {concat_demuxer,concat_protocol,0,1}
+                        method for concatenating intermediate files (default
+                        is 'concat_demuxer'); see
+                        https://github.com/zmwangx/caterpillar/#notes for
+                        details
   -v, --verbose         increase logging verbosity (can be specified multiple
                         times)
   -q, --quiet           decrease logging verbosity (can be specified multiple
                         times)
   -V, --version         show program's version number and exit
 ```
+
+## Notes
+
+- **A note on `-m, --concat-method`**: The final step of `caterpilla` is concatenating one or more parts (generated from splitted playlists with FFmpeg's `hls` demuxer) into a single output file. In this step we provide two methods of choice: the [concat demuxer](https://ffmpeg.org/ffmpeg-all.html#concat-1) and the [concat protocol](https://ffmpeg.org/ffmpeg-all.html#concat-1) (the former is the default). To pick the non-default `concat_protocol`, specify `--concat-method concat_protocol` on the command line, or as a shortcut, `-m 1` (`0` is an alias for `concat_demuxer`, and `1` is an alias for `concat_protocol`).
+
+  Each of these two methods may work better in certain cases. For instance, for [this stream](http://ts.snh48.com/chaoqing/8001/20171201185235-playlist.m3u8?beginTime=20171201205500&endTime=20171201210500), the concat demuxer simply fails with loads of error messages like "Application provided duration: 7980637472 / timestamp: 7994129672 is out of range for mov/mp4 format", whereas the concat protocol works fine. However, for [this stream](http://live.us.sinaimg.cn/000XDYqUjx07gRaRHSCz070d010002TZ0k01.m3u8), the concat protocol dumps a bunch of worrisome warnings like "DTS out of order" or "Non-monotonous DTS in output stream", whereas the concat demuxer doesn't.
+
+  *In short, if the default fails you (either doesn't work outright, or the generated video is bad in some way), try `-m 1`.*
 
 ## Etymology
 
