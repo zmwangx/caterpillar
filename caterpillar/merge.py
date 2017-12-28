@@ -31,6 +31,14 @@ from .utils import abspath, chdir, generate_m3u8, logger
 def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
                   ignore_errors: bool = False) -> str:
     logger.info(f'attempting to merge {m3u8_file} into {output}')
+
+    m3u8_obj = m3u8.load(m3u8_file.as_posix())
+    if len(m3u8_obj.segments) == 1:
+        # Only one segment, cannot further subdivide, so ignore whatever
+        # problems there may be.
+        logger.info(f'only one segment in playlist; ignoring errors and warnings')
+        ignore_errors = True
+
     regular_pattern = re.compile(r"Opening '(?P<path>.*\.ts)' for reading")
     error_pattern = re.compile('Non-monotonous DTS in output stream')
     command = ['ffmpeg', '-hide_banner', '-loglevel', 'info',
@@ -51,6 +59,13 @@ def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
         if error_pattern.search(line):
             assert last_read_segment
             logger.warning(f'DTS jump detected in {last_read_segment}')
+            if last_read_segment == m3u8_obj.segments[0].uri:
+                logger.warning(f'{last_read_segment} is the first segment in playlist; '
+                               f'splitting at the next segment')
+                split_point = m3u8_obj.segments[1].uri
+            else:
+                split_point = last_read_segment
+
             p.stderr.close()
             p.terminate()
             # Deal with Windows process and file ownership idiosyncrasies.
@@ -69,7 +84,8 @@ def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
                     break
                 else:
                     break
-            return last_read_segment
+
+            return split_point
     returncode = p.wait()
     if returncode != 0:
         logger.error(f'ffmpeg failed with exit status {returncode}')
