@@ -37,6 +37,8 @@ A recent version of [FFmpeg](https://ffmpeg.org/download.html). FFmpeg 3.3.4 is 
 
 Python 3.6 or later is required.
 
+*If in doubt, check out the detailed "[Installation Guide for Novices](https://github.com/zmwangx/caterpillar/wiki/Installation-Guide-for-Novices)".*
+
 ### For end users
 
 To install,
