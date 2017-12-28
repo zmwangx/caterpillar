@@ -31,7 +31,7 @@
 
 ## Dependencies
 
-A recent version of [FFmpeg](https://ffmpeg.org/download.html).
+A recent version of [FFmpeg](https://ffmpeg.org/download.html). FFmpeg 3.3.4 is known to work with caterpillar; FFmpeg 3.2.4 is known to NOT work.
 
 ## Installation
 
