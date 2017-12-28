@@ -9,7 +9,13 @@ from typing import Tuple
 
 import m3u8
 
-from .utils import abspath, chdir, generate_m3u8, logger
+from .utils import (
+    abspath,
+    chdir,
+    generate_m3u8,
+    logger,
+    should_log_info,
+)
 
 
 # If ignore_errors is True, blast through non-monotonous DTS errors
@@ -48,13 +54,16 @@ def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
                          encoding='utf-8', errors='backslashreplace')
     last_read_segment = None
     for line in p.stderr:
-        sys.stderr.write(line)
-        sys.stderr.flush()
-        if ignore_errors:
-            continue
         m = regular_pattern.search(line)
+        # Suppress the line if logging level is below INFO and it's just
+        # a boring "Opening '...' for reading" message.
+        if not m or should_log_info():
+            sys.stderr.write(line)
+            sys.stderr.flush()
         if m:
             last_read_segment = os.path.basename(m['path'])
+            continue
+        if ignore_errors:
             continue
         if error_pattern.search(line):
             assert last_read_segment
