@@ -6,15 +6,26 @@ import time
 import urllib.parse
 from typing import Tuple
 
+import click
 import m3u8
 import requests
 
-from .utils import excname, generate_m3u8, logger
+from .utils import (
+    excname,
+    generate_m3u8,
+    logger,
+    monkeypatch_get_terminal_size,
+    should_log_warning,
+    stub_context_manager,
+)
 
 
 CHUNK_SIZE = 65536  # Download chunk size (64K)
 REQUESTS_TIMEOUT = 5  # Both connect timeout and read timeout
 MAX_RETRY_INTERVAL = 30  # Upper bound on exponential backoff
+
+# For proper progress bar rendering on Windows consoles.
+monkeypatch_get_terminal_size()
 
 
 # Returns a bool indicating success (True) or failure (False).
@@ -125,12 +136,22 @@ def download_m3u8_segments(remote_m3u8_url: str,
         num_success = 0
         num_failure = 0
         logger.info(f'downloading {total} segments...')
-        for success in pool.imap_unordered(_download_segment_mappable, download_args):
-            if success:
-                num_success += 1
-            else:
-                num_failure += 1
-            logger.info(f'progress: {num_success}/{num_failure}/{total}')
+        progress_bar_generator = (click.progressbar if should_log_warning() else
+                                  stub_context_manager)
+        progress_bar_props = dict(
+            width=0,  # Full width
+            bar_template='[%(bar)s] %(info)s',
+            show_pos=True,
+            length=total,
+        )
+        with progress_bar_generator(**progress_bar_props) as bar:
+            for success in pool.imap_unordered(_download_segment_mappable, download_args):
+                if success:
+                    num_success += 1
+                else:
+                    num_failure += 1
+                logger.debug(f'progress: {num_success}/{num_failure}/{total}')
+                bar.update(1)
 
         if num_failure > 0:
             logger.error(f'failed to download {num_failure} segments')

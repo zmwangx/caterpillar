@@ -2,6 +2,7 @@ import contextlib
 import logging
 import os
 import pathlib
+import shutil
 from typing import Iterable, Tuple
 
 
@@ -17,6 +18,22 @@ def increase_logging_verbosity(num_levels):
     target_level = logger.level - num_levels * 10
     target_level = min(max(target_level, logging.DEBUG), logging.CRITICAL)
     logger.setLevel(target_level)
+
+
+def should_log_error():
+    return logger.isEnabledFor(logging.ERROR)
+
+
+def should_log_warning():
+    return logger.isEnabledFor(logging.WARNING)
+
+
+def should_log_info():
+    return logger.isEnabledFor(logging.INFO)
+
+
+def should_log_debug():
+    return logger.isEnabledFor(logging.DEBUG)
 
 
 # Returns the qualified name of an exeception.
@@ -46,6 +63,44 @@ def chdir(directory):
         yield
     finally:
         os.chdir(cwd)
+
+
+# Monkey patch shutil.get_terminal_size to fix full-width progress bar
+# overflow problem on Windows consoles.
+def monkeypatch_get_terminal_size():
+    # Only monkey patch on NT, and only monkey patch once.
+    if os.name != 'nt' or hasattr(shutil, 'original_get_terminal_size'):
+        return
+    shutil.original_get_terminal_size = shutil.get_terminal_size
+
+    def replacement(fallback=None):
+        columns, lines = shutil.original_get_terminal_size(fallback)
+        # One fewer column so that full-width progress bar doesn't flow
+        # onto the next line.
+        return os.terminal_size((columns - 1, lines))
+
+    shutil.get_terminal_size = replacement
+
+
+# A stub class with support for random attribute access. All attributes
+# not previously set are regarded as a stub method that takes any
+# positional and keyword arguments and returns None.
+class Stub(object):
+
+    def __getattr__(self, name):
+        def stub(*_, **__):
+            return
+
+        return stub
+
+    def __setattr__(self, name, value):
+        object.__setattr__(self, name, value)
+
+
+# A context manager factory that yields a Stub object and does no more.
+@contextlib.contextmanager
+def stub_context_manager(*_, **__):
+    yield Stub()
 
 
 # A bare minimum M3U8 generator (HLSv3).

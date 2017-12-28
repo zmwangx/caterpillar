@@ -31,7 +31,7 @@ setuptools.setup(
     ],
     keywords='HLS streaming m3u8 concatenate merge',
     packages=['caterpillar'],
-    install_requires=['m3u8', 'requests'],
+    install_requires=['click', 'm3u8', 'requests'],
     entry_points={
         'console_scripts': [
             'caterpillar=caterpillar.caterpillar:main',
