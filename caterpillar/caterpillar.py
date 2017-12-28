@@ -39,6 +39,8 @@ def main():
     add('-V', '--version', action='version', version=__version__)
     args = parser.parse_args()
 
+    increase_logging_verbosity(args.verbose - args.quiet)
+
     m3u8_url = args.m3u8_url
     output = args.output
 
@@ -82,8 +84,6 @@ def main():
         args.concat_method = 'concat_demuxer'
     elif args.concat_method == '1':
         args.concat_method = 'concat_protocol'
-
-    increase_logging_verbosity(args.verbose - args.quiet)
 
     remote_m3u8_url = m3u8_url
     working_directory = output.with_suffix('')
