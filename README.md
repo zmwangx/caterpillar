@@ -76,7 +76,8 @@ git pull origin master
 ```console
 $ caterpillar -h
 usage: caterpillar [-h] [-f] [-j JOBS] [-k]
-                   [-m {concat_demuxer,concat_protocol,0,1}] [-v] [-q] [-V]
+                   [-m {concat_demuxer,concat_protocol,0,1}] [--wipe] [-v]
+                   [-q] [-V]
                    m3u8_url [output]
 
 positional arguments:
@@ -97,6 +98,7 @@ optional arguments:
                         is 'concat_demuxer'); see
                         https://github.com/zmwangx/caterpillar/#notes for
                         details
+  --wipe                wipe all downloaded files (if any) and start over
   -v, --verbose         increase logging verbosity (can be specified multiple
                         times)
   -q, --quiet           decrease logging verbosity (can be specified multiple
