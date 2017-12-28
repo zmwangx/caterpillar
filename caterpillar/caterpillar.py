@@ -7,7 +7,7 @@ import sys
 import urllib.parse
 
 from . import download, merge
-from .utils import logger, increase_logging_verbosity
+from .utils import excname, logger, increase_logging_verbosity
 from .version import __version__
 
 
@@ -32,6 +32,8 @@ def main():
         help='''method for concatenating intermediate files (default is
         'concat_demuxer'); see https://github.com/zmwangx/caterpillar/#notes
         for details''')
+    add('--wipe', action='store_true',
+        help='wipe all downloaded files (if any) and start over')
     add('-v', '--verbose', action='count', default=0,
         help='increase logging verbosity (can be specified multiple times)')
     add('-q', '--quiet', action='count', default=0,
@@ -87,6 +89,16 @@ def main():
 
     remote_m3u8_url = m3u8_url
     working_directory = output.with_suffix('')
+    if args.wipe and working_directory.exists():
+        logger.info(f'wiping {working_directory}')
+        try:
+            if working_directory.is_file():
+                working_directory.unlink()
+            else:
+                shutil.rmtree(working_directory)
+        except OSError as e:
+            logger.critical(f'failed to wipe {working_directory}: {excname(e)}: {e}')
+            return 1
     working_directory.mkdir(exist_ok=True)
     remote_m3u8_file = working_directory / 'remote.m3u8'
     local_m3u8_file = working_directory / 'local.m3u8'
