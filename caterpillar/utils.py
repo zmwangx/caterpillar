@@ -11,7 +11,7 @@ _fmt = logging.Formatter(fmt='[%(levelname)s] %(message)s')
 _sh = logging.StreamHandler()
 _sh.setFormatter(_fmt)
 logger.addHandler(_sh)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
 
 
 def increase_logging_verbosity(num_levels):
