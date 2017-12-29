@@ -76,8 +76,8 @@ git pull origin master
 ```console
 $ caterpillar -h
 usage: caterpillar [-h] [-f] [-j JOBS] [-k]
-                   [-m {concat_demuxer,concat_protocol,0,1}] [--wipe] [-v]
-                   [-q] [-V]
+                   [-m {concat_demuxer,concat_protocol,0,1}]
+                   [--workdir WORKDIR] [--wipe] [-v] [-q] [-V]
                    m3u8_url [output]
 
 positional arguments:
@@ -98,6 +98,9 @@ optional arguments:
                         is 'concat_demuxer'); see
                         https://github.com/zmwangx/caterpillar/#notes for
                         details
+  --workdir WORKDIR     working directory to store downloaded segments and
+                        other intermediate files (default is automatically
+                        determined based on URL and output file)
   --wipe                wipe all downloaded files (if any) and start over
   -v, --verbose         increase logging verbosity (can be specified multiple
                         times)
