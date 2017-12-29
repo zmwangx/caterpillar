@@ -6,12 +6,67 @@ import shutil
 import sys
 import urllib.parse
 
-from . import download, merge
-from .utils import excname, logger, increase_logging_verbosity
+import peewee
+
+from . import download, merge, persistence
+from .utils import abspath, excname, logger, increase_logging_verbosity
 from .version import __version__
 
 
-def main():
+# A return value of None means preparation of working directory failed.
+@persistence.atomic
+def prepare_working_directory(m3u8_url: str,
+                              output_file: pathlib.Path,
+                              user_specified_workdir: pathlib.Path = None,
+                              wipe: bool = False) -> pathlib.Path:
+    if user_specified_workdir:
+        workdir = user_specified_workdir
+    else:
+        workdir = output_file.with_suffix('')
+        try:
+            cached_workdir = persistence.get_workdir(m3u8_url)
+        except peewee.PeeweeException as e:
+            logger.error(f'exception when reading cache: {excname(e)}: {e}')
+        if cached_workdir:
+            if cached_workdir.is_dir():
+                if abspath(workdir) != abspath(cached_workdir):
+                    logger.warning(f'using "{cached_workdir}" as working directory '
+                                   f'for segments and other intermediate files; '
+                                   f'use --workdir option to specify a different '
+                                   f'working directory')
+                    workdir = cached_workdir
+            else:
+                try:
+                    persistence.drop(m3u8_url)
+                except peewee.PeeweeException as e:
+                    logger.error(f'exception when updating cache: {excname(e)}: {e}')
+
+    if wipe and workdir.exists():
+        logger.info(f'wiping {workdir}')
+        try:
+            if workdir.is_file():
+                workdir.unlink()
+            else:
+                shutil.rmtree(workdir)
+        except OSError as e:
+            logger.error(f'failed to wipe {workdir}: {excname(e)}: {e}')
+            return None
+
+    try:
+        workdir.mkdir(exist_ok=True)
+    except OSError as e:
+        logger.error(f'failed to create {workdir}: {excname(e)}: {e}')
+        return None
+
+    try:
+        persistence.insert(m3u8_url, workdir)
+    except peewee.PeeweeException as e:
+        logger.error(f'exception when updating cache: {excname(e)}: {e}')
+
+    return workdir
+
+
+def main() -> int:
     parser = argparse.ArgumentParser()
     add = parser.add_argument
     add('m3u8_url',
@@ -32,6 +87,10 @@ def main():
         help='''method for concatenating intermediate files (default is
         'concat_demuxer'); see https://github.com/zmwangx/caterpillar/#notes
         for details''')
+    add('--workdir', type=pathlib.Path,
+        help='''working directory to store downloaded segments and other
+        intermediate files (default is automatically determined based on
+        URL and output file)''')
     add('--wipe', action='store_true',
         help='wipe all downloaded files (if any) and start over')
     add('-v', '--verbose', action='count', default=0,
@@ -78,6 +137,10 @@ def main():
             logger.critical(f'{output} is not a valid path or is not writable')
             return 1
 
+    if args.workdir and not args.workdir.parent.exists():
+        logger.critical(f'{args.workdir.parent} does not exist')
+        return 1
+
     if args.jobs is not None and args.jobs <= 0:
         logger.critical('jobs must be positive')
         return 1
@@ -88,18 +151,13 @@ def main():
         args.concat_method = 'concat_protocol'
 
     remote_m3u8_url = m3u8_url
-    working_directory = output.with_suffix('')
-    if args.wipe and working_directory.exists():
-        logger.info(f'wiping {working_directory}')
-        try:
-            if working_directory.is_file():
-                working_directory.unlink()
-            else:
-                shutil.rmtree(working_directory)
-        except OSError as e:
-            logger.critical(f'failed to wipe {working_directory}: {excname(e)}: {e}')
-            return 1
-    working_directory.mkdir(exist_ok=True)
+    working_directory = prepare_working_directory(remote_m3u8_url,
+                                                  output,
+                                                  user_specified_workdir=args.workdir,
+                                                  wipe=args.wipe)
+    if not working_directory:
+        logger.critical('failed to prepare working directory')
+        return 1
     remote_m3u8_file = working_directory / 'remote.m3u8'
     local_m3u8_file = working_directory / 'local.m3u8'
     try:
@@ -116,6 +174,10 @@ def main():
         merge.incremental_merge(local_m3u8_file, output,
                                 concat_method=args.concat_method)
         if not args.keep:
+            try:
+                persistence.drop(remote_m3u8_url)
+            except peewee.PeeweeException as e:
+                logger.error(f'exception when updating cache: {excname(e)}: {e}')
             shutil.rmtree(working_directory)
     except RuntimeError as e:
         logger.critical(e)

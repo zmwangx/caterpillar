@@ -5,6 +5,8 @@ import pathlib
 import shutil
 from typing import Iterable, Tuple
 
+import appdirs
+
 
 logger = logging.getLogger('caterpillar')
 _fmt = logging.Formatter(fmt='[%(levelname)s] %(message)s')
@@ -12,6 +14,10 @@ _sh = logging.StreamHandler()
 _sh.setFormatter(_fmt)
 logger.addHandler(_sh)
 logger.setLevel(logging.WARNING)
+
+_dirs = appdirs.AppDirs('caterpillar', 'org.zhimingwang')
+UESR_CONFIG_DIR = _dirs.user_config_dir
+USER_DATA_DIR = _dirs.user_data_dir
 
 
 def increase_logging_verbosity(num_levels):
