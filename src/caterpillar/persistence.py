@@ -1,10 +1,11 @@
 import functools
 import pathlib
 import time
+from typing import Any, Callable
 
 import peewee
 
-from .utils import USER_DATA_DIR, abspath
+from .utils import CACHING_DISABLED, USER_DATA_DIR, abspath
 
 
 SCHEMA_VERSION = 1
@@ -13,6 +14,8 @@ CACHE_EXPIRY_THRESHOLD = 3600 * 24 * 7  # A week
 
 database = peewee.SqliteDatabase(None)
 _database_initialized = False
+
+AnyCallable = Callable[..., Any]
 
 
 class _BaseModel(peewee.Model):
@@ -26,9 +29,13 @@ class URL(_BaseModel):
     last_access = peewee.FloatField()  # POSIX timestamp
 
 
-def initialize_database(path: pathlib.Path = None):
+def initialize_database(path: pathlib.Path = None) -> None:
     global _database_initialized
     if _database_initialized:
+        return
+
+    if CACHING_DISABLED:
+        _database_initialized = True
         return
 
     path = path or DATABASE_PATH
@@ -52,7 +59,7 @@ def initialize_database(path: pathlib.Path = None):
 
 # Decorator to ensure database is initialized before executing a
 # function.
-def ensure_database(func):
+def ensure_database(func: AnyCallable) -> AnyCallable:
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         initialize_database()
@@ -62,13 +69,33 @@ def ensure_database(func):
 
 
 # Decorator that's basically equivalent to database.atomic().
-def atomic(func):
-    return ensure_database(database.atomic()(func))
+def atomic(func: AnyCallable) -> AnyCallable:
+    if CACHING_DISABLED:
+        return func
+    else:
+        return ensure_database(database.atomic()(func))
 
 
+# Returns a decorator that returns the fallback value if caching is
+# disabled.
+def requires_cache(fallback: Any = None) -> Callable[[AnyCallable], AnyCallable]:
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            if CACHING_DISABLED:
+                return fallback
+            else:
+                return func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+@requires_cache()
 @ensure_database
 @database.atomic()
-def insert(url, workdir):
+def insert(url: str, workdir: pathlib.Path) -> None:
     workdir = abspath(workdir).as_posix()
     try:
         record = URL.get(URL.url == url)
@@ -79,9 +106,10 @@ def insert(url, workdir):
         URL.create(url=url, workdir=workdir, last_access=time.time())
 
 
+@requires_cache()
 @ensure_database
 @database.atomic()
-def touch(url):
+def touch(url: str) -> None:
     try:
         record = URL.get(URL.url == url)
         record.last_access = time.time()
@@ -90,9 +118,10 @@ def touch(url):
         pass
 
 
+@requires_cache()
 @ensure_database
 @database.atomic()
-def drop(url):
+def drop(url: str) -> None:
     try:
         record = URL.get(URL.url == url)
         record.delete_instance()
@@ -100,8 +129,9 @@ def drop(url):
         pass
 
 
+@requires_cache()
 @ensure_database
-def get_workdir(url):
+def get_workdir(url: str) -> pathlib.Path:
     try:
         record = URL.get(URL.url == url)
         return pathlib.Path(record.workdir)

@@ -18,6 +18,7 @@ logger.setLevel(logging.WARNING)
 _dirs = appdirs.AppDirs('caterpillar', 'org.zhimingwang')
 UESR_CONFIG_DIR = _dirs.user_config_dir
 USER_DATA_DIR = _dirs.user_data_dir
+CACHING_DISABLED = bool(os.getenv('CATERPILLAR_NO_CACHE'))
 
 
 def increase_logging_verbosity(num_levels):
