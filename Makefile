@@ -1,4 +1,4 @@
-.PHONY: dist qa flake8 pylint mypy
+.PHONY: dist tests qa flake8 pylint mypy
 
 dist:
 	./setup.py sdist
@@ -15,13 +15,16 @@ dist:
 	  esac							\
 	done
 
+tests:
+	tox
+
 qa: flake8 pylint mypy
 
 flake8:
-	flake8 src/caterpillar
+	flake8 src/caterpillar tests
 
 pylint:
-	pylint src/caterpillar
+	pylint src/caterpillar tests
 
 mypy:
 	mypy src/caterpillar
