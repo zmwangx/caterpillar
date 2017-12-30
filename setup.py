@@ -6,7 +6,7 @@ import setuptools
 
 
 HERE = pathlib.Path(__file__).resolve().parent
-with open(HERE / 'caterpillar' / 'version.py') as fp:
+with open(HERE / 'src/caterpillar/version.py') as fp:
     exec(fp.read())
 
 setuptools.setup(
@@ -30,6 +30,7 @@ setuptools.setup(
         'Topic :: Multimedia :: Video :: Conversion',
     ],
     keywords='HLS streaming m3u8 concatenate merge',
+    package_dir={'': 'src'},
     packages=['caterpillar'],
     install_requires=['appdirs', 'click', 'm3u8', 'peewee', 'requests'],
     entry_points={
