@@ -1,0 +1,16 @@
+language: python
+python:
+  - 3.6
+  - 3.7-dev
+env:
+  matrix:
+    - FFMPEG_VERSION=release
+    - FFMPEG_VERSION=git
+before_install:
+  - scripts/install-ffmpeg-on-travis
+  - export PATH=$PWD/bin:$PATH
+install:
+  - pip install '.[dev]' tox-travis
+script:
+  - make qa
+  - make tests

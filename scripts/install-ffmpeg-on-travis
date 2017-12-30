@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+set -e
+case "$FFMPEG_VERSION" in
+    release)
+        download_url="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-64bit-static.tar.xz"
+        ;;
+    git)
+        download_url="https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-64bit-static.tar.xz"
+        ;;
+    *)
+        echo '$FFMPEG_VERSION must be release or git' >&2
+        exit 1
+        ;;
+esac
+rm -f ffmpeg.tar.xz
+wget -O ffmpeg.tar.xz "$download_url"
+mkdir -p bin
+tar -xf ffmpeg.tar.xz --strip-components 1 -C bin --wildcards '*/ffmpeg'
+bin/ffmpeg -version
