@@ -33,6 +33,9 @@ setuptools.setup(
     package_dir={'': 'src'},
     packages=['caterpillar'],
     install_requires=['appdirs', 'click', 'm3u8', 'peewee', 'requests'],
+    extras_require={
+        'dev': ['flake8', 'mypy', 'pylint'],
+    },
     entry_points={
         'console_scripts': [
             'caterpillar=caterpillar.caterpillar:main',

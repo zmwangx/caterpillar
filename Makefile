@@ -1,4 +1,4 @@
-.PHONY: dist qa
+.PHONY: dist qa flake8 pylint mypy
 
 dist:
 	./setup.py sdist
@@ -15,6 +15,13 @@ dist:
 	  esac							\
 	done
 
-qa:
-	flake8 caterpillar
-	pylint caterpillar
+qa: flake8 pylint mypy
+
+flake8:
+	flake8 src/caterpillar
+
+pylint:
+	pylint src/caterpillar
+
+mypy:
+	mypy src/caterpillar
