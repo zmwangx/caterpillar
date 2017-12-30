@@ -180,7 +180,7 @@ def main() -> int:
                 logger.error(f'exception when updating cache: {excname(e)}: {e}')
             shutil.rmtree(working_directory)
     except RuntimeError as e:
-        logger.critical(e)
+        logger.critical(str(e))
         return 1
     return 0
 

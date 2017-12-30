@@ -96,14 +96,14 @@ def requires_cache(fallback: Any = None) -> Callable[[AnyCallable], AnyCallable]
 @ensure_database
 @database.atomic()
 def insert(url: str, workdir: pathlib.Path) -> None:
-    workdir = abspath(workdir).as_posix()
+    workdir_str = abspath(workdir).as_posix()
     try:
         record = URL.get(URL.url == url)
-        record.workdir = workdir
+        record.workdir = workdir_str
         record.last_access = time.time()
         record.save()
     except peewee.DoesNotExist:
-        URL.create(url=url, workdir=workdir, last_access=time.time())
+        URL.create(url=url, workdir=workdir_str, last_access=time.time())
 
 
 @requires_cache()

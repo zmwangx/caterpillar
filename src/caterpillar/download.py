@@ -144,7 +144,7 @@ def download_m3u8_segments(remote_m3u8_url: str,
             show_pos=True,
             length=total,
         )
-        with progress_bar_generator(**progress_bar_props) as bar:
+        with progress_bar_generator(**progress_bar_props) as bar:  # type: ignore
             for success in pool.imap_unordered(_download_segment_mappable, download_args):
                 if success:
                     num_success += 1
