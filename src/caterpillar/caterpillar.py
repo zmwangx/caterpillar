@@ -5,12 +5,129 @@ import pathlib
 import shutil
 import sys
 import urllib.parse
+from typing import List
 
 import peewee
 
 from . import download, merge, persistence
-from .utils import abspath, excname, logger, increase_logging_verbosity
+from .utils import (
+    UESR_CONFIG_DIR,
+    USER_CONFIG_DISABLED,
+    abspath,
+    excname,
+    logger,
+    increase_logging_verbosity,
+)
 from .version import __version__
+
+
+USER_CONFIG_FILE = pathlib.Path(UESR_CONFIG_DIR).joinpath('caterpillar.conf')
+
+
+ADDITIONAL_HELP_TEXT = f'''
+environment variables:
+  CATERPILLAR_USER_CONFIG_DIR
+                        custom directory for caterpillar.conf
+  CATERPILLAR_USER_DATA_DIR
+                        custom directory for certain data cached by
+                        caterpillar
+  CATERPILLAR_NO_USER_CONFIG
+                        when set to a non-empty value, do not load
+                        options from user config file
+  CATERPILLAR_NO_CACHE  when set to a non-empty value, do not read or
+                        write caterpillar's cache
+
+configuration file:
+  {USER_CONFIG_FILE}
+
+'''
+
+
+class ArgumentParser(argparse.ArgumentParser):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.parsing_with_config_defaults = False
+
+    # config_defaults is a list of arguments parsed from user config
+    # file; see load_user_config().
+    def parse_args_with_user_config(self, args: List[str] = None,
+                                    namespace: argparse.Namespace = None,
+                                    config_defaults: List[str] = None) -> argparse.Namespace:
+        if config_defaults is None:
+            return super().parse_args(args, namespace=namespace)
+        else:
+            if args is None:
+                args = sys.argv[1:]
+            try:
+                self.parsing_with_config_defaults = True
+                return super().parse_args(config_defaults + args, namespace=namespace)
+            finally:
+                self.parsing_with_config_defaults = False
+
+    def format_help(self) -> str:
+        help_text = super().format_help()
+        return help_text + ADDITIONAL_HELP_TEXT
+
+    def error(self, message):
+        self.print_usage(sys.stderr)
+        msg = f'{self.prog}: error: {message}\n'
+        if self.parsing_with_config_defaults:
+            msg += (f'You may want to check your config file "{USER_CONFIG_FILE}" '
+                    f'for invalid arguments.\n')
+        self.exit(2, msg)
+
+
+CONFIG_FILE_TEMPLATE = '''\
+# You may configure default options here so that you don't need to
+# specify the same options on the command line every time.
+#
+# Each option, along with its argument (if any), should be on a separate
+# line; unlike on the command line, you don't need to quote or escape
+# whitespace or other special characters in an argument, e.g., a line
+#
+#     --workdir Temporary Directory
+#
+# is interpreted as two command line arguments "--workdir" and
+# "Temporary Directory".
+#
+# Positional arguments are not allowed, i.e., option lines must begin
+# with -.
+#
+# Blank lines and lines starting with a pound (#) are ignored.
+#
+# You can always override the default options here on the command line.
+#
+# Examples:
+#
+#     --jobs 32
+#     --concat-method concat_protocol
+'''
+
+
+def load_user_config() -> List[str]:
+    try:
+        if USER_CONFIG_FILE.is_file():  # pylint: disable=no-member
+            args = []
+            with open(USER_CONFIG_FILE) as fp:
+                for line in fp:
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    if not line.startswith('-'):
+                        logger.warning(f'illegal line in config file "{USER_CONFIG_FILE}": {line}')
+                        continue
+                    args.extend(line.split(maxsplit=1))
+            return args
+        else:
+            # Try to create the config file with template
+            USER_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(USER_CONFIG_FILE, 'w') as fp:
+                fp.write(CONFIG_FILE_TEMPLATE)
+            return []
+    except OSError as e:
+        logger.warning(f'error loading user config: {excname(e)}: {e}')
+        return []
 
 
 # A return value of None means preparation of working directory failed.
@@ -67,7 +184,9 @@ def prepare_working_directory(m3u8_url: str,
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    user_config_options = [] if USER_CONFIG_DISABLED else load_user_config()
+
+    parser = ArgumentParser()
     add = parser.add_argument
     add('m3u8_url',
         help='the VOD URL')
@@ -98,7 +217,14 @@ def main() -> int:
     add('-q', '--quiet', action='count', default=0,
         help='decrease logging verbosity (can be specified multiple times)')
     add('-V', '--version', action='version', version=__version__)
+
+    # First make sure arguments on the command line are valid.
     args = parser.parse_args()
+
+    if not USER_CONFIG_DISABLED:
+        # Prepend defaults from user config and parse again. If parsing
+        # fails this time, the error must be in the config file.
+        args = parser.parse_args_with_user_config(config_defaults=user_config_options)
 
     increase_logging_verbosity(args.verbose - args.quiet)
 
