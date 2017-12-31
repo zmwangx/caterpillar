@@ -24,6 +24,7 @@
   - [For end users](#for-end-users)
   - [For developers and beta testers](#for-developers-and-beta-testers)
 - [Usage](#usage)
+- [Configuration](#configuration)
 - [Notes](#notes)
 - [Etymology](#etymology)
 - [Copyright](#copyright)
@@ -108,9 +109,57 @@ optional arguments:
   -q, --quiet           decrease logging verbosity (can be specified multiple
                         times)
   -V, --version         show program's version number and exit
+
+environment variables:
+  CATERPILLAR_USER_CONFIG_DIR
+                        custom directory for caterpillar.conf
+  CATERPILLAR_USER_DATA_DIR
+                        custom directory for certain data cached by
+                        caterpillar
+  CATERPILLAR_NO_USER_CONFIG
+                        when set to a non-empty value, do not load
+                        options from user config file
+  CATERPILLAR_NO_CACHE  when set to a non-empty value, do not read or
+                        write caterpillar's cache
+
+configuration file:
+  <an operating system and user-dependent path>
+
 ```
 
 See the [wiki page](https://github.com/zmwangx/caterpillar/wiki/Usage-Examples) for usage examples.
+
+## Configuration
+
+To save some retyping, `caterpillar` supports the configuration of default options in an operating system and user-dependent configuration file. The path is usually `~/Library/Application Support/caterpillar/caterpillar.conf` on macOS, `%AppData%\org.zhimingwang\caterpillar\caterpillar.conf` on Windows, and `~/.config/caterpillar/caterpillar.conf` on Linux. Run `caterpillar -h` to view the actual path.
+
+The syntax of the configuration file is documented in the template (automatically created for you if possible), duplicated below:
+
+```
+# You may configure default options here so that you don't need to
+# specify the same options on the command line every time.
+#
+# Each option, along with its argument (if any), should be on a separate
+# line; unlike on the command line, you don't need to quote or escape
+# whitespace or other special characters in an argument, e.g., a line
+#
+#     --workdir Temporary Directory
+#
+# is interpreted as two command line arguments "--workdir" and
+# "Temporary Directory".
+#
+# Positional arguments are not allowed, i.e., option lines must begin
+# with -.
+#
+# Blank lines and lines starting with a pound (#) are ignored.
+#
+# You can always override the default options here on the command line.
+#
+# Examples:
+#
+#     --jobs 32
+#     --concat-method concat_protocol
+```
 
 ## Notes
 
