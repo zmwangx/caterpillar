@@ -105,7 +105,8 @@ def _init_worker():
 # jobs indicates the maximum number of parallel downloads. Default is
 # twice os.cpu_count().
 #
-# Returns a bool indicating success (True) or failure (False).
+# Returns a bool indicating success (True) or failure (False). Note that
+# an empty playlist (invalid) automatically results in a failure.
 def download_m3u8_segments(remote_m3u8_url: str,
                            remote_m3u8_file: pathlib.Path,
                            local_m3u8_file: pathlib.Path,
@@ -131,11 +132,15 @@ def download_m3u8_segments(remote_m3u8_url: str,
         fp.write(generate_m3u8(target_duration, local_segments))
     logger.info(f'generated {local_m3u8_file}')
 
+    total = len(download_args)
+    if total == 0:
+        logger.error(f'{remote_m3u8_file}: empty playlist')
+        return False
+    jobs = min(jobs, total)
     with multiprocessing.Pool(jobs, _init_worker) as pool:
-        total = len(download_args)
         num_success = 0
         num_failure = 0
-        logger.info(f'downloading {total} segments...')
+        logger.info(f'downloading {total} segments with {jobs} workers...')
         progress_bar_generator = (click.progressbar if should_log_warning() else
                                   stub_context_manager)
         progress_bar_props = dict(
