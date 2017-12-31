@@ -14,7 +14,6 @@ from .utils import (
     UESR_CONFIG_DIR,
     USER_CONFIG_DISABLED,
     abspath,
-    excname,
     logger,
     increase_logging_verbosity,
 )
@@ -125,8 +124,8 @@ def load_user_config() -> List[str]:
             with open(USER_CONFIG_FILE, 'w') as fp:
                 fp.write(CONFIG_FILE_TEMPLATE)
             return []
-    except OSError as e:
-        logger.warning(f'error loading user config: {excname(e)}: {e}')
+    except OSError:
+        logger.exc_warning('error loading user config')
         return []
 
 
@@ -142,8 +141,8 @@ def prepare_working_directory(m3u8_url: str,
         workdir = output_file.with_suffix('')
         try:
             cached_workdir = persistence.get_workdir(m3u8_url)
-        except peewee.PeeweeException as e:
-            logger.error(f'exception when reading cache: {excname(e)}: {e}')
+        except peewee.PeeweeException:
+            logger.exc_error('exception when reading cache')
         if cached_workdir:
             if cached_workdir.is_dir():
                 if abspath(workdir) != abspath(cached_workdir):
@@ -155,8 +154,8 @@ def prepare_working_directory(m3u8_url: str,
             else:
                 try:
                     persistence.drop(m3u8_url)
-                except peewee.PeeweeException as e:
-                    logger.error(f'exception when updating cache: {excname(e)}: {e}')
+                except peewee.PeeweeException:
+                    logger.exc_error('exception when updating cache')
 
     if wipe and workdir.exists():
         logger.info(f'wiping {workdir}')
@@ -165,20 +164,20 @@ def prepare_working_directory(m3u8_url: str,
                 workdir.unlink()
             else:
                 shutil.rmtree(workdir)
-        except OSError as e:
-            logger.error(f'failed to wipe {workdir}: {excname(e)}: {e}')
+        except OSError:
+            logger.exc_error(f'failed to wipe {workdir}')
             return None
 
     try:
         workdir.mkdir(exist_ok=True)
-    except OSError as e:
-        logger.error(f'failed to create {workdir}: {excname(e)}: {e}')
+    except OSError:
+        logger.exc_error(f'failed to create {workdir}')
         return None
 
     try:
         persistence.insert(m3u8_url, workdir)
-    except peewee.PeeweeException as e:
-        logger.error(f'exception when updating cache: {excname(e)}: {e}')
+    except peewee.PeeweeException:
+        logger.exc_error('exception when updating cache')
 
     return workdir
 
@@ -302,8 +301,8 @@ def main() -> int:
         if not args.keep:
             try:
                 persistence.drop(remote_m3u8_url)
-            except peewee.PeeweeException as e:
-                logger.error(f'exception when updating cache: {excname(e)}: {e}')
+            except peewee.PeeweeException:
+                logger.exc_error('exception when updating cache')
             shutil.rmtree(working_directory)
     except RuntimeError as e:
         logger.critical(str(e))

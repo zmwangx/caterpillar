@@ -11,7 +11,6 @@ import m3u8
 import requests
 
 from .utils import (
-    excname,
     generate_m3u8,
     logger,
     monkeypatch_get_terminal_size,
@@ -43,8 +42,8 @@ def resumable_download(url: str, file: pathlib.Path) -> bool:
                 if chunk:
                     fp.write(chunk)
         return True
-    except Exception as e:
-        logger.warning(f'GET {url}: {excname(e)}: {e}')
+    except Exception:
+        logger.exc_warning(f'GET {url}')
         return False
 
 
@@ -116,8 +115,8 @@ def download_m3u8_segments(remote_m3u8_url: str,
 
     try:
         remote_m3u8_obj = m3u8.load(remote_m3u8_file.as_posix())
-    except Exception as e:
-        logger.error(f'failed to parse {remote_m3u8_file}: {excname(e)}: {e}')
+    except Exception:
+        logger.exc_error(f'failed to parse {remote_m3u8_file}')
         return False
 
     target_duration = remote_m3u8_obj.target_duration

@@ -3,12 +3,37 @@ import logging
 import os
 import pathlib
 import shutil
-from typing import Iterable, Tuple
+import sys
+from typing import Iterable, Tuple, cast
 
 import appdirs
 
 
-logger = logging.getLogger('caterpillar')
+class Logger(logging.Logger):
+
+    def exc_error(self, msg: str, exception: BaseException = None) -> None:
+        self.error(self._format_exception_message(msg, exception))
+
+    def exc_warning(self, msg: str, exception: BaseException = None) -> None:
+        self.warning(self._format_exception_message(msg, exception))
+
+    @staticmethod
+    def _format_exception_message(lead_msg: str, exception: BaseException = None) -> str:
+        if exception is None:
+            exception = sys.exc_info()[1]
+        if exception is None:
+            return ''
+        exc_desc = f'{excname(exception)}: {exception}'
+        if lead_msg:
+            return f'{lead_msg}: {exc_desc}'
+        else:
+            return exc_desc
+
+
+logging.setLoggerClass(Logger)
+# We have to cast here due to logging.getLogger's stub being inflexible.
+# https://github.com/python/typeshed/issues/1801
+logger = cast(Logger, logging.getLogger('caterpillar'))
 _fmt = logging.Formatter(fmt='[%(levelname)s] %(message)s')
 _sh = logging.StreamHandler()
 _sh.setFormatter(_fmt)
