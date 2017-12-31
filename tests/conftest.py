@@ -20,14 +20,22 @@ class HLSServer(http.server.HTTPServer, multiprocessing.Process):
         host, port = self.socket.getsockname()
         self.server_root = f'http://{host}:{port}/'
         self.good_playlist = self.server_root + 'good.m3u8'
+        self.empty_playlist = self.server_root + 'empty.m3u8'
 
         self.tmpdir = tempfile.mkdtemp()
         cwd = os.getcwd()
         try:
+            # Generate good.m3u8
             os.chdir(self.tmpdir)
             subprocess.run('ffmpeg -loglevel warning '
                            '-f rawvideo -s hd720 -pix_fmt yuv420p -r 30 -t 30 -i /dev/zero '
                            '-f hls -hls_playlist_type vod -y good.m3u8', shell=True)
+            # Generate empty.m3u8
+            with open('empty.m3u8', 'w') as fp:
+                fp.write('#EXTM3U\n'
+                         '#EXT-X-VERSION:3\n'
+                         '#EXT-X-TARGETDURATION:5\n'
+                         '#EXT-X-ENDLIST\n')
         finally:
             os.chdir(cwd)
 

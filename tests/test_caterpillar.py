@@ -37,3 +37,10 @@ class TestCaterpillar(object):
         assert caterpillar.main() == 0
         assert os.path.isfile('good.mp4')
         assert os.path.isdir('good')
+
+    def test_empty_playlist(self, hls_server, monkeypatch, capfd):
+        monkeypatch.setattr(sys, 'argv', ['-', hls_server.empty_playlist])
+        assert caterpillar.main() == 1
+        assert 'empty playlist' in capfd.readouterr().err
+        assert os.path.isdir('empty')
+        assert not os.path.isfile('empty.mp4')
