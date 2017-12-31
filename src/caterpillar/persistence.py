@@ -64,7 +64,6 @@ def ensure_database(func: AnyCallable) -> AnyCallable:
     def wrapper(*args, **kwargs):
         initialize_database()
         return func(*args, **kwargs)
-
     return wrapper
 
 
@@ -86,9 +85,7 @@ def requires_cache(fallback: Any = None) -> Callable[[AnyCallable], AnyCallable]
                 return fallback
             else:
                 return func(*args, **kwargs)
-
         return wrapper
-
     return decorator
 
 
