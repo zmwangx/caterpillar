@@ -23,23 +23,18 @@ class TestCaterpillar(object):
         assert os.path.isfile('good.ts')
         assert not os.path.exists('good')
 
-    def test_formats(self, hls_server, monkeypatch):
+    @pytest.mark.parametrize('mode,adts', [
+        ('0', False),
+        ('0', True),
+        ('1', False),
+        ('1', True),
+    ])
+    def test_formats(self, hls_server, monkeypatch, mode, adts):
+        playlist = hls_server.adts_playlist if adts else hls_server.good_playlist
+
         def try_extention(ext):
             output = f'good.{ext}'
-            monkeypatch.setattr(sys, 'argv', ['-', hls_server.good_playlist, output])
-            assert caterpillar.main() == 0
-            assert os.path.isfile(output)
-
-        try_extention('mp4')
-        try_extention('ts')
-        try_extention('mkv')
-        try_extention('mov')
-        try_extention('flv')
-
-    def test_adts(self, hls_server, monkeypatch):
-        def try_extention(ext):
-            output = f'good.{ext}'
-            monkeypatch.setattr(sys, 'argv', ['-', hls_server.adts_playlist, output])
+            monkeypatch.setattr(sys, 'argv', ['-', '-m', mode, playlist, output])
             assert caterpillar.main() == 0
             assert os.path.isfile(output)
 
