@@ -1,6 +1,7 @@
 .PHONY: dist tests qa flake8 pylint mypy
 
 dist:
+	@- $(RM) -r build
 	./setup.py sdist
 	./setup.py bdist_wheel
 	for f in dist/*.tar.gz dist/*.whl; do			\
