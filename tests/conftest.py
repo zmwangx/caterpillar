@@ -21,15 +21,21 @@ class HLSServer(http.server.HTTPServer, multiprocessing.Process):
         self.server_root = f'http://{host}:{port}/'
         self.good_playlist = self.server_root + 'good.m3u8'
         self.empty_playlist = self.server_root + 'empty.m3u8'
+        self.adts_playlist = self.server_root + 'adts.m3u8'
 
         self.tmpdir = tempfile.mkdtemp()
         cwd = os.getcwd()
         try:
-            # Generate good.m3u8
             os.chdir(self.tmpdir)
+            # Generate good.m3u8
             subprocess.run('ffmpeg -loglevel warning '
                            '-f rawvideo -s hd720 -pix_fmt yuv420p -r 30 -t 30 -i /dev/zero '
                            '-f hls -hls_playlist_type vod -y good.m3u8', shell=True)
+            # Generate adts.m3u8 (AAC stream with ADTS headers)
+            subprocess.run('ffmpeg -loglevel warning '
+                           '-f lavfi -i anullsrc -t 30 -f adts -y adts.aac', shell=True)
+            subprocess.run('ffmpeg -loglevel warning '
+                           '-i adts.aac -f hls -hls_playlist_type vod -y adts.m3u8', shell=True)
             # Generate empty.m3u8
             with open('empty.m3u8', 'w') as fp:
                 fp.write('#EXTM3U\n'
