@@ -1,0 +1,33 @@
+#!/usr/bin/env python3
+
+import pathlib
+import re
+import sys
+
+
+HERE = pathlib.Path(__file__).resolve().parent
+VERSION_PY = HERE.parent / 'src/caterpillar/version.py'
+
+
+def main():
+    with open(VERSION_PY) as fp:
+        content = fp.read()
+    m = re.match(r"^__version__ = '(?P<version>.*)'", content)
+    if not m:
+        sys.exit(f'cannot parse version.py: {content}')
+    current_version = m['version']
+    if current_version.endswith('dev'):
+        # Already on dev, do nothing
+        print(f'already on {current_version}, not touched', file=sys.stderr)
+        return
+    m = re.match(r'^(?P<trunk>.*?)(?P<last>\d+)$', current_version)
+    if not m:
+        sys.exit(f'cannot parse version number: {version}')
+    next_dev_version = m['trunk'] + str(int(m['last']) + 1) + 'dev'
+    with open(VERSION_PY, 'w') as fp:
+        print(f"__version__ = '{next_dev_version}'", file=fp)
+    print(f'version bumped to {next_dev_version}', file=sys.stderr)
+
+
+if __name__ == '__main__':
+    main()

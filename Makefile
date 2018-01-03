@@ -14,6 +14,7 @@ dist:
 	      ;;						\
 	  esac							\
 	done
+	scripts/bump-to-dev-version
 
 tests:
 	tox
