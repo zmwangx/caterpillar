@@ -1,5 +1,6 @@
 [MESSAGES CONTROL]
 disable=R,C,broad-except,global-statement
+ignored-classes=PurePath,M3U8
 
 [REPORTS]
 score=no

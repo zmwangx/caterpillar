@@ -1,7 +1,7 @@
 import functools
 import pathlib
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
 import peewee
 
@@ -128,7 +128,7 @@ def drop(url: str) -> None:
 
 @requires_cache()
 @ensure_database
-def get_workdir(url: str) -> pathlib.Path:
+def get_workdir(url: str) -> Optional[pathlib.Path]:
     try:
         record = URL.get(URL.url == url)
         return pathlib.Path(record.workdir)

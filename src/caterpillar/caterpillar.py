@@ -5,7 +5,7 @@ import pathlib
 import shutil
 import sys
 import urllib.parse
-from typing import List
+from typing import List, Optional
 
 import peewee
 
@@ -134,7 +134,7 @@ def load_user_config() -> List[str]:
 def prepare_working_directory(m3u8_url: str,
                               output_file: pathlib.Path,
                               user_specified_workdir: pathlib.Path = None,
-                              wipe: bool = False) -> pathlib.Path:
+                              wipe: bool = False) -> Optional[pathlib.Path]:
     if user_specified_workdir:
         workdir = user_specified_workdir
     else:
@@ -351,7 +351,7 @@ def main() -> int:
         retvals = []
         for m3u8_url, output in entries:
             sys.stderr.write(f'Downloading {m3u8_url} into "{output}"...\n')
-            process_entry(m3u8_url, output, **kwargs)
+            retvals.append(process_entry(m3u8_url, output, **kwargs))
         return int(any(retvals))
 
 

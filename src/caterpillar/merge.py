@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import sys
 import time
-from typing import Tuple
+from typing import Optional, Tuple
 
 import m3u8
 
@@ -35,7 +35,7 @@ from .utils import (
 # Returns None if the merge succeeds, or the basename of the first bad
 # segment if non-monotonous DTS is detected.
 def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
-                  ignore_errors: bool = False) -> str:
+                  ignore_errors: bool = False) -> Optional[str]:
     logger.info(f'attempting to merge {m3u8_file} into {output}')
 
     m3u8_obj = m3u8.load(m3u8_file.as_posix())
@@ -46,7 +46,8 @@ def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
         ignore_errors = True
 
     regular_pattern = re.compile(r"Opening '(?P<path>.*\.ts)' for reading")
-    error_pattern = re.compile('Non-monotonous DTS in output stream')
+    error_pattern = re.compile(
+        r'(Non-monotonous DTS in output stream|out of range for mov/mp4 format)')
     command = ['ffmpeg', '-hide_banner', '-loglevel', 'info',
                '-f', 'hls', '-i', m3u8_file.as_posix(), '-c', 'copy', '-y', output.as_posix()]
     p = subprocess.Popen(command, stdin=subprocess.DEVNULL, stderr=subprocess.PIPE,
