@@ -24,6 +24,7 @@
   - [For end users](#for-end-users)
   - [For developers and beta testers](#for-developers-and-beta-testers)
 - [Usage](#usage)
+- [Batch mode](#batch-mode)
 - [Configuration](#configuration)
 - [Notes](#notes)
 - [Etymology](#etymology)
@@ -77,19 +78,21 @@ git pull origin master
 
 ```console
 $ caterpillar -h
-usage: caterpillar [-h] [-f] [-j JOBS] [-k]
+usage: caterpillar [-h] [-b] [-f] [-j JOBS] [-k]
                    [-m {concat_demuxer,concat_protocol,0,1}]
                    [--workdir WORKDIR] [--wipe] [-v] [-q] [-V]
                    m3u8_url [output]
 
 positional arguments:
-  m3u8_url              the VOD URL
+  m3u8_url              the VOD URL, or the batch mode manifest file
   output                path to the final output file (default is a .ts file
                         in the current directory with the basename of the VOD
                         URL)
 
 optional arguments:
   -h, --help            show this help message and exit
+  -b, --batch           run in batch mode (see the "Batch Mode" section in
+                        docs)
   -f, --force           overwrite the output file if it already exists
   -j JOBS, --jobs JOBS  maximum number of concurrent downloads (default is
                         twice the number of CPU cores, including virtual
@@ -128,6 +131,20 @@ configuration file:
 ```
 
 See the [wiki page](https://github.com/zmwangx/caterpillar/wiki/Usage-Examples) for usage examples.
+
+## Batch mode
+
+In normal mode, `caterpillar` deals with only one stream. There is also a batch mode for downloading multiple streams at once. In this mode, you specify a manifest file on the command line in the place of the VOD URL, where the manifest file contains a VOD URL and a filename (or path) seperated by a tab on each line, e.g., `caterpillar manifest.txt`, where `manifest.txt` contains
+
+```
+https://example.com/hls/1.m3u8	1.mp4
+https://example.com/hls/2.m3u8	2.mp4
+https://example.com/hls/3.m3u8	3.mp4
+```
+
+The filenames (or paths) are relative to the parent directory of the manifest file. The tab character is not allowed in the filenames (or paths).
+
+Most options for normal mode are also allowed in the batch mode, as are options set in the configuration file.
 
 ## Configuration
 
