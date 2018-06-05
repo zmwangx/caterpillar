@@ -182,16 +182,89 @@ def prepare_working_directory(m3u8_url: str,
     return workdir
 
 
+def process_entry(m3u8_url: str, output: pathlib.Path,
+                  force: bool = False, workdir: pathlib.Path = None,
+                  wipe: bool = False, keep: bool = False, jobs: int = None,
+                  concat_method: str = 'concat_demuxer') -> int:
+    if output is None:
+        stem = pathlib.Path(urllib.parse.urlsplit(m3u8_url).path).stem
+        if not stem or stem.startswith('.'):
+            logger.critical(f'cannot auto-determine an output file from {m3u8_url}')
+            return 1
+        output = pathlib.Path(f'{stem}.mp4')
+        logger.info(f'output not specified; using "{output}"')
+
+    if not output.parent.exists():
+        logger.critical(f'"{output.parent}" does not exist')
+        return 1
+
+    if not output.suffix:
+        logger.critical(f'output must have a suffix, e.g., .mp4')
+        return 1
+
+    if output.exists() and not force:
+        logger.critical(f'"{output}" already exists; specify --force to overwrite it')
+        return 1
+
+    if not output.exists():
+        # Make sure output (especially if it's auto-deduced from URL, which
+        # might contain reserved characters on Windows) is a valid path and is
+        # writable.
+        try:
+            with open(output, 'wb'):
+                pass
+            output.unlink()
+        except OSError:
+            logger.critical(f'"{output}" is not a valid path or is not writable')
+            return 1
+
+    remote_m3u8_url = m3u8_url
+    working_directory = prepare_working_directory(remote_m3u8_url,
+                                                  output,
+                                                  user_specified_workdir=workdir,
+                                                  wipe=wipe)
+    if not working_directory:
+        logger.critical('failed to prepare working directory')
+        return 1
+    remote_m3u8_file = working_directory / 'remote.m3u8'
+    local_m3u8_file = working_directory / 'local.m3u8'
+    try:
+        if not download.download_m3u8_file(remote_m3u8_url, remote_m3u8_file):
+            logger.critical(f'failed to download {remote_m3u8_url}')
+            return 1
+        logger.info(f'downloaded {remote_m3u8_file}')
+        if not download.download_m3u8_segments(remote_m3u8_url,
+                                               remote_m3u8_file,
+                                               local_m3u8_file,
+                                               jobs=jobs):
+            logger.critical('failed to download some segments')
+            return 1
+        merge.incremental_merge(local_m3u8_file, output,
+                                concat_method=concat_method)
+        if not keep:
+            try:
+                persistence.drop(remote_m3u8_url)
+            except peewee.PeeweeException:
+                logger.exc_error('exception when updating cache')
+            shutil.rmtree(working_directory)
+    except RuntimeError as e:
+        logger.critical(str(e))
+        return 1
+    return 0
+
+
 def main() -> int:
     user_config_options = [] if USER_CONFIG_DISABLED else load_user_config()
 
     parser = ArgumentParser()
     add = parser.add_argument
     add('m3u8_url',
-        help='the VOD URL')
+        help='the VOD URL, or the batch mode manifest file')
     add('output', nargs='?', type=pathlib.Path, default=None,
         help='''path to the final output file (default is a .ts file in the
         current directory with the basename of the VOD URL)''')
+    add('-b', '--batch', action='store_true',
+        help='run in batch mode (see the "Batch Mode" section in docs)')
     add('-f', '--force', action='store_true',
         help='overwrite the output file if it already exists')
     add('-j', '--jobs', type=int, default=None,
@@ -227,39 +300,12 @@ def main() -> int:
 
     increase_logging_verbosity(args.verbose - args.quiet)
 
-    m3u8_url = args.m3u8_url
-    output = args.output
-
-    if output is None:
-        stem = pathlib.Path(urllib.parse.urlsplit(m3u8_url).path).stem
-        if not stem or stem.startswith('.'):
-            logger.critical(f'cannot auto-determine an output file from {m3u8_url}')
+    if args.batch:
+        if args.output:
+            logger.critical('output file not allowed in bach mode')
             return 1
-        output = pathlib.Path(f'{stem}.mp4')
-        logger.info(f'output not specified; using {output}')
-
-    if not output.parent.exists():
-        logger.critical(f'{output.parent} does not exist')
-        return 1
-
-    if not output.suffix:
-        logger.critical(f'output must have a suffix, e.g., .mp4')
-        return 1
-
-    if output.exists() and not args.force:
-        logger.critical(f'{output} already exists; specify --force to overwrite it')
-        return 1
-
-    if not output.exists():
-        # Make sure output (especially if it's auto-deduced from URL, which
-        # might contain reserved characters on Windows) is a valid path and is
-        # writable.
-        try:
-            with open(output, 'wb'):
-                pass
-            output.unlink()
-        except OSError:
-            logger.critical(f'{output} is not a valid path or is not writable')
+        if args.workdir:
+            logger.critical('workdir not allowed in batch mode')
             return 1
 
     if args.workdir and not args.workdir.parent.exists():
@@ -275,39 +321,38 @@ def main() -> int:
     elif args.concat_method == '1':
         args.concat_method = 'concat_protocol'
 
-    remote_m3u8_url = m3u8_url
-    working_directory = prepare_working_directory(remote_m3u8_url,
-                                                  output,
-                                                  user_specified_workdir=args.workdir,
-                                                  wipe=args.wipe)
-    if not working_directory:
-        logger.critical('failed to prepare working directory')
-        return 1
-    remote_m3u8_file = working_directory / 'remote.m3u8'
-    local_m3u8_file = working_directory / 'local.m3u8'
-    try:
-        if not download.download_m3u8_file(remote_m3u8_url, remote_m3u8_file):
-            logger.critical(f'failed to download {remote_m3u8_url}')
+    kwargs = dict(
+        force=args.force,
+        workdir=args.workdir,
+        wipe=args.wipe,
+        keep=args.keep,
+        jobs=args.jobs,
+        concat_method=args.concat_method,
+    )
+
+    if not args.batch:
+        return process_entry(args.m3u8_url, args.output, **kwargs)
+    else:
+        manifest = pathlib.Path(args.m3u8_url).resolve()
+        target_dir = manifest.parent
+        try:
+            entries = []
+            with manifest.open() as fp:
+                for line in fp:
+                    m3u8_url, filename = line.strip().split('\t')
+                    output = target_dir.joinpath(filename)
+                    entries.append((m3u8_url, output))
+        except OSError:
+            logger.critical('cannot open batch mode manifest')
             return 1
-        logger.info(f'downloaded {remote_m3u8_file}')
-        if not download.download_m3u8_segments(remote_m3u8_url,
-                                               remote_m3u8_file,
-                                               local_m3u8_file,
-                                               jobs=args.jobs):
-            logger.critical('failed to download some segments')
+        except Exception:
+            logger.critical('malformed batch mode manifest')
             return 1
-        merge.incremental_merge(local_m3u8_file, output,
-                                concat_method=args.concat_method)
-        if not args.keep:
-            try:
-                persistence.drop(remote_m3u8_url)
-            except peewee.PeeweeException:
-                logger.exc_error('exception when updating cache')
-            shutil.rmtree(working_directory)
-    except RuntimeError as e:
-        logger.critical(str(e))
-        return 1
-    return 0
+        retvals = []
+        for m3u8_url, output in entries:
+            sys.stderr.write(f'Downloading {m3u8_url} into "{output}"...\n')
+            process_entry(m3u8_url, output, **kwargs)
+        return int(any(retvals))
 
 
 if __name__ == '__main__':
