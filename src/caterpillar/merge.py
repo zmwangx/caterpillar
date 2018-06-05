@@ -156,7 +156,7 @@ def incremental_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
     intermediate_dir.mkdir(exist_ok=True)
 
     while True:
-        merge_dest = intermediate_dir / f'{playlist_index}.ts'
+        merge_dest = intermediate_dir / f'{playlist_index}.mp4'
         split_point = attempt_merge(playlist, merge_dest)
         if not split_point:
             break
@@ -170,14 +170,14 @@ def incremental_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
         if concat_method == 'concat_demuxer':
             with open('concat.txt', 'w') as fp:
                 for index in range(1, playlist_index + 1):
-                    print(f'file {index}.ts', file=fp)
+                    print(f'file {index}.mp4', file=fp)
 
             command = ['ffmpeg', '-hide_banner', '-loglevel', 'info',
                        '-f', 'concat', '-i', 'concat.txt',
                        '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-movflags', 'faststart',
                        '-y', output.as_posix()]
         elif concat_method == 'concat_protocol':
-            ffmpeg_input = 'concat:' + '|'.join(f'{i}.ts' for i in range(1, playlist_index + 1))
+            ffmpeg_input = 'concat:' + '|'.join(f'{i}.mp4' for i in range(1, playlist_index + 1))
             command = ['ffmpeg', '-hide_banner', '-loglevel', 'info', '-i', ffmpeg_input,
                        '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-movflags', 'faststart',
                        '-y', output.as_posix()]
