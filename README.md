@@ -26,7 +26,7 @@
 - [Usage](#usage)
 - [Batch mode](#batch-mode)
 - [Configuration](#configuration)
-- [Notes](#notes)
+- [Notes and limitations](#notes-and-limitations)
 - [Etymology](#etymology)
 - [Copyright](#copyright)
 
@@ -178,7 +178,11 @@ The syntax of the configuration file is documented in the template (automaticall
 #     --concat-method concat_protocol
 ```
 
-## Notes
+## Notes and limitations
+
+- [`EXT-X-STREAM-INF` (and `EXT-X-I-FRAME-STREAM-INF` by extension)](https://tools.ietf.org/html/rfc8216#section-4.3.4.2), despite being part of protocol version 1, is not supported due to complexity and inherent conflict with caterpillar's working model (only one rendition is allowed). One has to preprocess a stream with `EXT-X-STREAM-INF` and pick out the variant stream to be used with caterpillar.
+
+  Efforts could be made to extract the variant streams and show them to the user, and it is even feasible to proceed with the download if only one variant stream is present. Contribution is welcome for this feature.
 
 - **A note on `-m, --concat-method`**: The final step of `caterpillar` is concatenating one or more parts (generated from splitted playlists with FFmpeg's `hls` demuxer) into a single output file. In this step we provide two methods of choice: the [concat demuxer](https://ffmpeg.org/ffmpeg-all.html#concat-1) and the [concat protocol](https://ffmpeg.org/ffmpeg-all.html#concat-1) (the former is the default). To pick the non-default `concat_protocol`, specify `--concat-method concat_protocol` on the command line, or as a shortcut, `-m 1` (`0` is an alias for `concat_demuxer`, and `1` is an alias for `concat_protocol`).
 
