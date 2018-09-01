@@ -7,6 +7,7 @@ import sys
 import urllib.parse
 from typing import List, Optional
 
+import chardet
 import peewee
 
 from . import download, merge, persistence
@@ -341,23 +342,38 @@ def main() -> int:
         target_dir = manifest.parent
         try:
             entries = []
-            with manifest.open() as fp:
-                for line in fp:
-                    try:
-                        m3u8_url, filename = line.strip().split('\t')
-                        output = target_dir.joinpath(filename)
-                        entries.append((m3u8_url, output))
-                    except Exception:
-                        logger.critical('malformed line in batch mode manifest: %s',
-                                        line, exc_info=args.debug)
-                        if args.debug:
-                            raise
-                        return 1
+            with manifest.open('rb') as fp:
+                manifest_bytes = fp.read()
         except OSError:
             logger.critical('cannot open batch mode manifest', exc_info=args.debug)
             if args.debug:
                 raise
             return 1
+
+        detection_result = chardet.detect(manifest_bytes)
+        encoding = detection_result['encoding']
+        confidence = detection_result['confidence']
+        logger.debug('manifest: %s encoding with %.2f confidence', encoding, confidence)
+        try:
+            manifest_content = manifest_bytes.decode(encoding)
+        except UnicodeError:
+            logger.critical('failed to decode manifest in %s encoding', encoding)
+            if args.debug:
+                raise
+            return 1
+
+        for line in manifest_content.splitlines():
+            try:
+                m3u8_url, filename = line.strip().split('\t')
+                output = target_dir.joinpath(filename)
+                entries.append((m3u8_url, output))
+            except Exception:
+                logger.critical('malformed line in batch mode manifest: %s',
+                                line, exc_info=args.debug)
+                if args.debug:
+                    raise
+                return 1
+
         retvals = []
         for m3u8_url, output in entries:
             sys.stderr.write(f'Downloading {m3u8_url} into "{output}"...\n')
