@@ -288,6 +288,8 @@ def main() -> int:
         help='increase logging verbosity (can be specified multiple times)')
     add('-q', '--quiet', action='count', default=0,
         help='decrease logging verbosity (can be specified multiple times)')
+    add('--debug', action='store_true',
+        help='output debugging information (also implies highest verbosity)')
     add('-V', '--version', action='version', version=__version__)
 
     # First make sure arguments on the command line are valid.
@@ -299,6 +301,8 @@ def main() -> int:
         args = parser.parse_args_with_user_config(config_defaults=user_config_options)
 
     increase_logging_verbosity(args.verbose - args.quiet)
+    if args.debug:
+        increase_logging_verbosity(5)
 
     if args.batch:
         if args.output:
@@ -339,14 +343,20 @@ def main() -> int:
             entries = []
             with manifest.open() as fp:
                 for line in fp:
-                    m3u8_url, filename = line.strip().split('\t')
-                    output = target_dir.joinpath(filename)
-                    entries.append((m3u8_url, output))
+                    try:
+                        m3u8_url, filename = line.strip().split('\t')
+                        output = target_dir.joinpath(filename)
+                        entries.append((m3u8_url, output))
+                    except Exception:
+                        logger.critical('malformed line in batch mode manifest: %s',
+                                        line, exc_info=args.debug)
+                        if args.debug:
+                            raise
+                        return 1
         except OSError:
-            logger.critical('cannot open batch mode manifest')
-            return 1
-        except Exception:
-            logger.critical('malformed batch mode manifest')
+            logger.critical('cannot open batch mode manifest', exc_info=args.debug)
+            if args.debug:
+                raise
             return 1
         retvals = []
         for m3u8_url, output in entries:
