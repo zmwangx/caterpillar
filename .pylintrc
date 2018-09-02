@@ -1,5 +1,5 @@
 [MESSAGES CONTROL]
-disable=R,C,broad-except,global-statement
+disable=R,C,broad-except,global-statement,logging-fstring-interpolation
 ignored-classes=PurePath,M3U8
 
 [REPORTS]
