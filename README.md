@@ -80,7 +80,7 @@ git pull origin master
 $ caterpillar -h
 usage: caterpillar [-h] [-b] [-f] [-j JOBS] [-k]
                    [-m {concat_demuxer,concat_protocol,0,1}]
-                   [--workdir WORKDIR] [--wipe] [-v] [-q] [-V]
+                   [--workdir WORKDIR] [--wipe] [-v] [-q] [--debug] [-V]
                    m3u8_url [output]
 
 positional arguments:
@@ -111,6 +111,8 @@ optional arguments:
                         times)
   -q, --quiet           decrease logging verbosity (can be specified multiple
                         times)
+  --debug               output debugging information (also implies highest
+                        verbosity)
   -V, --version         show program's version number and exit
 
 environment variables:
@@ -184,7 +186,7 @@ The syntax of the configuration file is documented in the template (automaticall
 
   Efforts could be made to extract the variant streams and show them to the user, and it is even feasible to proceed with the download if only one variant stream is present. Contribution is welcome for this feature.
 
-- **A note on `-m, --concat-method`**: The final step of `caterpillar` is concatenating one or more parts (generated from splitted playlists with FFmpeg's `hls` demuxer) into a single output file. In this step we provide two methods of choice: the [concat demuxer](https://ffmpeg.org/ffmpeg-all.html#concat-1) and the [concat protocol](https://ffmpeg.org/ffmpeg-all.html#concat-1) (the former is the default). To pick the non-default `concat_protocol`, specify `--concat-method concat_protocol` on the command line, or as a shortcut, `-m 1` (`0` is an alias for `concat_demuxer`, and `1` is an alias for `concat_protocol`).
+- **A note on `-m, --concat-method`**: The final step of `caterpillar` is concatenating one or more parts (generated from splitted playlists with FFmpeg's `hls` demuxer) into a single output file. In this step we provide two methods of choice: the [concat demuxer](https://ffmpeg.org/ffmpeg-all.html#concat-1) and the [concat protocol](https://ffmpeg.org/ffmpeg-all.html#concat-2) (the former is the default). To pick the non-default `concat_protocol`, specify `--concat-method concat_protocol` on the command line, or as a shortcut, `-m 1` (`0` is an alias for `concat_demuxer`, and `1` is an alias for `concat_protocol`).
 
   Each of these two methods may work better in certain cases. For instance, for [this stream](http://ts.snh48.com/chaoqing/8001/20171201185235-playlist.m3u8?beginTime=20171201205500&endTime=20171201210500), the concat demuxer simply fails with loads of error messages like "Application provided duration: 7980637472 / timestamp: 7994129672 is out of range for mov/mp4 format", whereas the concat protocol works fine. However, for [this stream](http://live.us.sinaimg.cn/000XDYqUjx07gRaRHSCz070d010002TZ0k01.m3u8), the concat protocol dumps a bunch of worrisome warnings like "DTS out of order" or "Non-monotonous DTS in output stream", whereas the concat demuxer doesn't.
 
