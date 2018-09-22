@@ -350,17 +350,22 @@ def main() -> int:
                 raise
             return 1
 
-        detection_result = chardet.detect(manifest_bytes)
-        encoding = detection_result['encoding']
-        confidence = detection_result['confidence']
-        logger.debug('manifest: %s encoding with %.2f confidence', encoding, confidence)
         try:
-            manifest_content = manifest_bytes.decode(encoding)
+            manifest_content = manifest_bytes.decode('utf-8')
         except UnicodeError:
-            logger.critical('failed to decode manifest in %s encoding', encoding)
-            if args.debug:
-                raise
-            return 1
+            logger.debug('failed to decode manifest in utf-8')
+            # Try chardet
+            detection_result = chardet.detect(manifest_bytes)
+            encoding = detection_result['encoding']
+            confidence = detection_result['confidence']
+            logger.debug('manifest: %s encoding with %.2f confidence', encoding, confidence)
+            try:
+                manifest_content = manifest_bytes.decode(encoding)
+            except UnicodeError:
+                logger.critical('failed to decode manifest in %s encoding', encoding)
+                if args.debug:
+                    raise
+                return 1
 
         for line in manifest_content.splitlines():
             try:
