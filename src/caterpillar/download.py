@@ -1,10 +1,11 @@
+import email.utils
 import multiprocessing
 import os
 import pathlib
 import signal
 import time
 import urllib.parse
-from typing import Tuple
+from typing import Optional, Tuple
 
 import click
 import m3u8
@@ -27,8 +28,26 @@ MAX_RETRY_INTERVAL = 30  # Upper bound on exponential backoff
 monkeypatch_get_terminal_size()
 
 
+# Get mtime from an HTTP response's Last-Modified header, or Date
+# header.
+#
+# Note that using the Date header for mtime is non-standard. Neither
+# wget or aria2 considers the Date header.
+def get_mtime(r: requests.Response) -> Optional[int]:
+    modified = r.headers.get('Last-Modified') or r.headers.get('Date')
+    if not modified:
+        return None
+    try:
+        return int(email.utils.parsedate_to_datetime(modified).timestamp())
+    except TypeError:
+        return None
+
+
 # Returns a bool indicating success (True) or failure (False).
-def resumable_download(url: str, file: pathlib.Path) -> bool:
+#
+# If server_timestamp is True, set mtime of the downloaded file
+# according to timestamp reported by server.
+def resumable_download(url: str, file: pathlib.Path, server_timestamp: bool = False) -> bool:
     existing_bytes = file.stat().st_size if file.is_file() else 0
     try:
         logger.debug(f'GET {url}')
@@ -41,6 +60,15 @@ def resumable_download(url: str, file: pathlib.Path) -> bool:
             for chunk in r.iter_content(chunk_size=CHUNK_SIZE):
                 if chunk:
                     fp.write(chunk)
+        if server_timestamp:
+            mtime = get_mtime(r)
+            if mtime is not None:
+                atime = time.time()
+                try:
+                    logger.debug(f'setting mtime on {file} to {mtime}')
+                    os.utime(file, times=(atime, mtime))
+                except OSError:
+                    logger.warning(f'GET {url}: failed to set mtime on {file}')
         return True
     except Exception:
         logger.exc_warning(f'GET {url}')
@@ -48,8 +76,12 @@ def resumable_download(url: str, file: pathlib.Path) -> bool:
 
 
 # Returns a bool indicating success (True) or failure (False).
+#
+# If server_timestamp is True, set mtime of the downloaded file
+# according to timestamp reported by server.
 def resumable_download_with_retries(url: str, file: pathlib.Path,
-                                    max_retries: int = 2) -> bool:
+                                    max_retries: int = 2,
+                                    server_timestamp: bool = False) -> bool:
     incomplete_file = file.with_suffix(file.suffix + '.incomplete')
 
     # If the file, without the .incomplete suffix, is already present,
@@ -59,7 +91,7 @@ def resumable_download_with_retries(url: str, file: pathlib.Path,
 
     retries = 0
     while True:
-        if resumable_download(url, incomplete_file):
+        if resumable_download(url, incomplete_file, server_timestamp=server_timestamp):
             os.replace(incomplete_file, file)
             return True
 
@@ -76,7 +108,7 @@ def resumable_download_with_retries(url: str, file: pathlib.Path,
 # Returns a bool indicating success (True) or failure (False).
 def download_m3u8_file(m3u8_url: str, file: pathlib.Path) -> bool:
     logger.info(f'downloading {m3u8_url} to {file} ...')
-    return resumable_download_with_retries(m3u8_url, file)
+    return resumable_download_with_retries(m3u8_url, file, server_timestamp=True)
 
 
 # Returns a bool indicating success (True) or failure (False).

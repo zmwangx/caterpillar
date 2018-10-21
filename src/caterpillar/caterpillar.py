@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import pathlib
 import shutil
 import sys
+import time
 import urllib.parse
 from typing import List, Optional
 
@@ -242,6 +244,13 @@ def process_entry(m3u8_url: str, output: pathlib.Path,
             return 1
         merge.incremental_merge(local_m3u8_file, output,
                                 concat_method=concat_method)
+        try:
+            atime = time.time()
+            mtime = os.stat(remote_m3u8_file).st_mtime
+            logger.debug(f'setting mtime on {output} to {mtime}')
+            os.utime(output, times=(atime, mtime))
+        except OSError:
+            logger.warning(f'failed to set mtime on {output}')
         if not keep:
             try:
                 persistence.drop(remote_m3u8_url)
