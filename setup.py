@@ -33,7 +33,7 @@ setuptools.setup(
     keywords='HLS streaming m3u8 concatenate merge',
     package_dir={'': 'src'},
     packages=['caterpillar'],
-    install_requires=['appdirs', 'chardet', 'click', 'm3u8', 'peewee', 'requests'],
+    install_requires=['xdgappdirs>=1.4.4.3', 'chardet', 'click', 'm3u8', 'peewee', 'requests'],
     extras_require={
         'dev': ['flake8', 'mypy', 'pylint', 'pytest', 'tox'],
     },
