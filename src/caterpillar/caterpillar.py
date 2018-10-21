@@ -186,7 +186,7 @@ def prepare_working_directory(m3u8_url: str,
 
 
 def process_entry(m3u8_url: str, output: pathlib.Path,
-                  force: bool = False, workdir: pathlib.Path = None,
+                  force: bool = False, exist_ok: bool = False, workdir: pathlib.Path = None,
                   wipe: bool = False, keep: bool = False, jobs: int = None,
                   concat_method: str = 'concat_demuxer') -> int:
     if output is None:
@@ -206,8 +206,12 @@ def process_entry(m3u8_url: str, output: pathlib.Path,
         return 1
 
     if output.exists() and not force:
-        logger.critical(f'"{output}" already exists; specify --force to overwrite it')
-        return 1
+        if exist_ok:
+            sys.stderr.write(f'"{output}" already exists\n')
+            return 0
+        else:
+            logger.critical(f'"{output}" already exists; specify --force to overwrite it')
+            return 1
 
     if not output.exists():
         # Make sure output (especially if it's auto-deduced from URL, which
@@ -275,6 +279,8 @@ def main() -> int:
         current directory with the basename of the VOD URL)''')
     add('-b', '--batch', action='store_true',
         help='run in batch mode (see the "Batch Mode" section in docs)')
+    add('-e', '--exist-ok', action='store_true',
+        help='skip existing targets (only works in batch mode)')
     add('-f', '--force', action='store_true',
         help='overwrite the output file if it already exists')
     add('-j', '--jobs', type=int, default=None,
@@ -337,6 +343,7 @@ def main() -> int:
 
     kwargs = dict(
         force=args.force,
+        exist_ok=args.batch and args.exist_ok,
         workdir=args.workdir,
         wipe=args.wipe,
         keep=args.keep,
