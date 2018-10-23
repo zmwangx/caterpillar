@@ -78,7 +78,7 @@ git pull origin master
 
 ```console
 $ caterpillar -h
-usage: caterpillar [-h] [-b] [-f] [-j JOBS] [-k]
+usage: caterpillar [-h] [-b] [-e] [-f] [-j JOBS] [-k]
                    [-m {concat_demuxer,concat_protocol,0,1}]
                    [--workdir WORKDIR] [--wipe] [-v] [-q] [--debug] [-V]
                    m3u8_url [output]
@@ -93,6 +93,7 @@ optional arguments:
   -h, --help            show this help message and exit
   -b, --batch           run in batch mode (see the "Batch Mode" section in
                         docs)
+  -e, --exist-ok        skip existing targets (only works in batch mode)
   -f, --force           overwrite the output file if it already exists
   -j JOBS, --jobs JOBS  maximum number of concurrent downloads (default is
                         twice the number of CPU cores, including virtual

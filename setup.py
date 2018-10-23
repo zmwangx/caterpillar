@@ -19,7 +19,7 @@ setuptools.setup(
     author_email="zmwangx@gmail.com",
     license="MIT",
     classifiers=[
-        "Development Status :: 4 - Beta",
+        "Development Status :: 5 - Stable",
         "Intended Audience :: Developers",
         "Intended Audience :: End Users/Desktop",
         "License :: OSI Approved :: MIT License",
