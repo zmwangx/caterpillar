@@ -465,9 +465,13 @@ def main() -> int:
                 return 1
 
         retvals = []
-        for m3u8_url, output in entries:
-            sys.stderr.write(f'Downloading {m3u8_url} into "{output}"...\n')
+        count = len(entries)
+        for i, (m3u8_url, output) in enumerate(entries):
+            sys.stderr.write(
+                f'[{i + 1}/{count}] Downloading {m3u8_url} into "{output}"...\n'
+            )
             retvals.append(process_entry(m3u8_url, output, **kwargs))
+            sys.stderr.write("\n")
         retval = int(any(retvals))
         if retval == 0 and args.remove_manifest_on_success:
             try:
