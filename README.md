@@ -80,7 +80,8 @@ git pull origin master
 $ caterpillar -h
 usage: caterpillar [-h] [-b] [-e] [-f] [-j JOBS] [-k]
                    [-m {concat_demuxer,concat_protocol,0,1}]
-                   [--workdir WORKDIR] [--wipe] [-v] [-q] [--debug] [-V]
+                   [--remove-manifest-on-success] [--workdir WORKDIR] [--wipe]
+                   [-v] [-q] [--debug] [-V]
                    m3u8_url [output]
 
 positional arguments:
@@ -104,6 +105,9 @@ optional arguments:
                         is 'concat_demuxer'); see
                         https://github.com/zmwangx/caterpillar/#notes for
                         details
+  --remove-manifest-on-success
+                        remove manifest file if all downloads are successful
+                        (only works in batch mode)
   --workdir WORKDIR     working directory to store downloaded segments and
                         other intermediate files (default is automatically
                         determined based on URL and output file)
