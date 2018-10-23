@@ -132,6 +132,7 @@ def load_user_config() -> List[str]:
     except UnicodeDecodeError:
         logger.warning(f'cannot decode config file "{USER_CONFIG_FILE}" as utf-8; '
                        'see https://git.io/caterpillar-encoding')
+        return []
 
 
 # A return value of None means preparation of working directory failed.
