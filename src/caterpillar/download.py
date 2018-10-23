@@ -157,7 +157,7 @@ def download_m3u8_segments(
         jobs = (os.cpu_count() or 4) * 2
 
     try:
-        remote_m3u8_obj = m3u8.load(remote_m3u8_file.as_posix())
+        remote_m3u8_obj = m3u8.load(str(remote_m3u8_file))
     except Exception:
         logger.exc_error(f"failed to parse {remote_m3u8_file}")
         return False

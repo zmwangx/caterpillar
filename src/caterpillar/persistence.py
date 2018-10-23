@@ -40,7 +40,7 @@ def initialize_database(path: pathlib.Path = None) -> None:
 
     path = path or DATABASE_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
-    database.init(path.as_posix())
+    database.init(str(path))
     database.connect()
 
     schema_version = database.execute_sql("PRAGMA user_version;").fetchone()[0]
@@ -96,7 +96,7 @@ def requires_cache(fallback: Any = None) -> Callable[[AnyCallable], AnyCallable]
 @ensure_database
 @database.atomic()
 def insert(url: str, workdir: pathlib.Path) -> None:
-    workdir_str = abspath(workdir).as_posix()
+    workdir_str = str(abspath(workdir))
     try:
         record = URL.get(URL.url == url)
         record.workdir = workdir_str

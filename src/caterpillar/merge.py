@@ -33,7 +33,7 @@ def attempt_merge(
 ) -> Optional[str]:
     logger.info(f"attempting to merge {m3u8_file} into {output}")
 
-    m3u8_obj = m3u8.load(m3u8_file.as_posix())
+    m3u8_obj = m3u8.load(str(m3u8_file))
     if len(m3u8_obj.segments) == 1:
         # Only one segment, cannot further subdivide, so ignore whatever
         # problems there may be.
@@ -52,11 +52,13 @@ def attempt_merge(
         "-f",
         "hls",
         "-i",
+        # This argument must use Unix forward slashes even on Windows,
+        # or FFmpeg would "fail to open segment".
         m3u8_file.as_posix(),
         "-c",
         "copy",
         "-y",
-        output.as_posix(),
+        str(output),
     ]
     p = subprocess.Popen(
         command,
@@ -131,7 +133,7 @@ def split_m3u8(
     split_point: str,
 ) -> None:
     logger.info(f"splitting {source} at {split_point}")
-    m3u8_obj = m3u8.load(source.as_posix())
+    m3u8_obj = m3u8.load(str(source))
     target_duration = m3u8_obj.target_duration
     part1_segments = []
     part2_segments = []
@@ -209,7 +211,7 @@ def incremental_merge(
                 "-movflags",
                 "faststart",
                 "-y",
-                output.as_posix(),
+                str(output),
             ]
         elif concat_method == "concat_protocol":
             ffmpeg_input = "concat:" + "|".join(
@@ -229,7 +231,7 @@ def incremental_merge(
                 "-movflags",
                 "faststart",
                 "-y",
-                output.as_posix(),
+                str(output),
             ]
         else:
             raise NotImplementedError(f"unrecognized concat method '{concat_method}'")
