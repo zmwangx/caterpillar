@@ -9,7 +9,6 @@ import time
 import urllib.parse
 from typing import List, Optional
 
-import chardet
 import peewee
 
 from . import download, merge, persistence
