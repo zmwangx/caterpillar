@@ -111,7 +111,7 @@ def load_user_config() -> List[str]:
     try:
         if USER_CONFIG_FILE.is_file():  # pylint: disable=no-member
             args = []
-            with open(USER_CONFIG_FILE) as fp:
+            with open(USER_CONFIG_FILE, encoding='utf-8') as fp:
                 for line in fp:
                     line = line.strip()
                     if not line or line.startswith('#'):
@@ -124,12 +124,15 @@ def load_user_config() -> List[str]:
         else:
             # Try to create the config file with template
             USER_CONFIG_FILE.parent.mkdir(parents=True, exist_ok=True)
-            with open(USER_CONFIG_FILE, 'w') as fp:
+            with open(USER_CONFIG_FILE, 'w', encoding='utf-8') as fp:
                 fp.write(CONFIG_FILE_TEMPLATE)
             return []
     except OSError:
         logger.exc_warning('error loading user config')
         return []
+    except UnicodeDecodeError:
+        logger.warning(f'cannot decode config file "{USER_CONFIG_FILE}" as utf-8; '
+                       'see https://git.io/caterpillar-encoding')
 
 
 # A return value of None means preparation of working directory failed.
@@ -358,30 +361,20 @@ def main() -> int:
         target_dir = manifest.parent
         try:
             entries = []
-            with manifest.open('rb') as fp:
-                manifest_bytes = fp.read()
+            with manifest.open(encoding='utf-8') as fp:
+                manifest_content = fp.read()
         except OSError:
             logger.critical('cannot open batch mode manifest', exc_info=args.debug)
             if args.debug:
                 raise
             return 1
-
-        try:
-            manifest_content = manifest_bytes.decode('utf-8')
-        except UnicodeError:
-            logger.debug('failed to decode manifest in utf-8')
-            # Try chardet
-            detection_result = chardet.detect(manifest_bytes)
-            encoding = detection_result['encoding']
-            confidence = detection_result['confidence']
-            logger.debug('manifest: %s encoding with %.2f confidence', encoding, confidence)
-            try:
-                manifest_content = manifest_bytes.decode(encoding)
-            except UnicodeError:
-                logger.critical('failed to decode manifest in %s encoding', encoding)
-                if args.debug:
-                    raise
-                return 1
+        except UnicodeDecodeError:
+            logger.critical('cannot decode batch mode manifest as utf-8; '
+                            'see https://git.io/caterpillar-encoding',
+                            exc_info=args.debug)
+            if args.debug:
+                raise
+            return 1
 
         for line in manifest_content.splitlines():
             try:

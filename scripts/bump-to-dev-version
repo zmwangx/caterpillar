@@ -10,7 +10,7 @@ VERSION_PY = HERE.parent / 'src/caterpillar/version.py'
 
 
 def main():
-    with open(VERSION_PY) as fp:
+    with open(VERSION_PY, encoding='utf-8') as fp:
         content = fp.read()
     m = re.match(r"^__version__ = '(?P<version>.*)'", content)
     if not m:
@@ -24,7 +24,7 @@ def main():
     if not m:
         sys.exit(f'cannot parse version number: {version}')
     next_dev_version = m['trunk'] + str(int(m['last']) + 1) + 'dev'
-    with open(VERSION_PY, 'w') as fp:
+    with open(VERSION_PY, 'w', encoding='utf-8') as fp:
         print(f"__version__ = '{next_dev_version}'", file=fp)
     print(f'version bumped to {next_dev_version}', file=sys.stderr)
 

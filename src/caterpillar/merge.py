@@ -126,10 +126,10 @@ def split_m3u8(source: pathlib.Path, destinations: Tuple[pathlib.Path, pathlib.P
         else:
             part1_segments.append(tup)
     dest1, dest2 = destinations
-    with open(dest1, 'w') as fp:
+    with open(dest1, 'w', encoding='utf-8') as fp:
         fp.write(generate_m3u8(target_duration, part1_segments))
     logger.info(f'wrote {dest1}')
-    with open(dest2, 'w') as fp:
+    with open(dest2, 'w', encoding='utf-8') as fp:
         fp.write(generate_m3u8(target_duration, part2_segments))
     logger.info(f'wrote {dest2}')
 
@@ -169,7 +169,7 @@ def incremental_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
 
     with chdir(intermediate_dir):
         if concat_method == 'concat_demuxer':
-            with open('concat.txt', 'w') as fp:
+            with open('concat.txt', 'w', encoding='utf-8') as fp:
                 for index in range(1, playlist_index + 1):
                     print(f'file {index}.mp4', file=fp)
 

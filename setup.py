@@ -6,7 +6,7 @@ import setuptools
 
 
 HERE = pathlib.Path(__file__).resolve().parent
-with open(HERE / 'src/caterpillar/version.py') as fp:
+with open(HERE / 'src/caterpillar/version.py', encoding='utf-8') as fp:
     exec(fp.read())
 
 setuptools.setup(
@@ -33,7 +33,7 @@ setuptools.setup(
     keywords='HLS streaming m3u8 concatenate merge',
     package_dir={'': 'src'},
     packages=['caterpillar'],
-    install_requires=['xdgappdirs>=1.4.4.3', 'chardet', 'click', 'm3u8', 'peewee', 'requests'],
+    install_requires=['xdgappdirs>=1.4.4.3', 'click', 'm3u8', 'peewee', 'requests'],
     extras_require={
         'dev': ['flake8', 'mypy', 'pylint', 'pytest', 'tox'],
     },

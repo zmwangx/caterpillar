@@ -37,7 +37,7 @@ class HLSServer(http.server.HTTPServer, multiprocessing.Process):
             subprocess.run('ffmpeg -loglevel warning '
                            '-i adts.aac -f hls -hls_playlist_type vod -y adts.m3u8', shell=True)
             # Generate empty.m3u8
-            with open('empty.m3u8', 'w') as fp:
+            with open('empty.m3u8', 'w', encoding='utf-8') as fp:
                 fp.write('#EXTM3U\n'
                          '#EXT-X-VERSION:3\n'
                          '#EXT-X-TARGETDURATION:5\n'

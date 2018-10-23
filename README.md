@@ -192,6 +192,22 @@ The syntax of the configuration file is documented in the template (automaticall
 
   *In short, if the default fails you (either doesn't work outright, or the generated video is bad in some way), try `-m 1`.*
 
+- <a id="encoding">**Encoding-related issues.**</a> `caterpillar`, since version 1.0, reads and writes every on-disk file in UTF-8 encoding, period. In particular, user config file and batch mode manifests need to be in UTF-8. Legacy config file might need to be migrated to UTF-8.
+
+  If you're unfamiliar with the concept of character encodings, you may find the classic [*Joel on Software* article on charsets and Unicode](https://goo.gl/kSwEYj) informative (gosh, it's fifteen years old now). On Unix-like systems, [`uchardet`](https://www.freedesktop.org/wiki/Software/uchardet/) is my go-to tool for encoding detection; it's not readily packaged on Windows, and it's not officially supported and a royal pain to compile by yourself (to a non-Windows developer like me, and probably to whomever is reading this note). I don't know a good alternative on Windows, but I have a small web app that does encoding detection entirely in the browser: <https://chardet.tcl.sh/>.
+
+  Converting a file to UTF-8, once you know its contents, is actually pretty easy. Any text editor worth its salt (and still afloat) should be able to save as UTF-8; heck, even Windows Notepad can do this (it even appears to be the default).
+
+  This note is mostly only relevant to Windows. I can't overstate how I absolutely fucking detest dealing with encodings surrounding Microsoft products. If you ever saw �'s on web pages in places where there should be quotation marks — that's Latin-1, or Windows-1252, being decoded as UTF-8. That's just the tip of the iceberg. If you ever deal with CJK, or another alphabet other than Latin, oh baby, you're in for a world of pain. I can't count the number of times I opened a file or unzipped an archive from a Windows user, only to find garbage filenames or garbage content or both, and had to guess the encoding to restore the meaning. Also, meet Windows cmd or PowerShell; you have to fucking `chcp 65001` just to work with Unicode, and even then for whatever fucking reason I still get ??? for Chinese characters in input commands – oh and I use Cmder, which allows a secondary font for CJK, an infinite improvement over stock cmd or PowerShell already, but still no luck. You may also want to meet the latest and greatest Office for Mac, where you still can't import a UTF-8-encoded CSV file with non-ASCII characters (I know a workaround, for fuck's sake). Not sure about the Windows version, and not enthusiastic enough to find out. (In all fairness, Apple's HFS+ with its infamous NFD-based UTF-8-MAC encoding in filenames was hell, but other than that Mac OS X and its successors have been pretty good encoding-wise; and APFS is finally rid of the pseudo-NFD garbage — it might have had its own problems at first, but I've yet to run into any. HFS+ encoding problems are peanuts compared to Microsoft's encoding problems, by the way. I'm not even bringing fonts into the mix.)
+
+  In addition, if you ever have Chinese filenames in the English version of Windows — gosh, they're so ugly they almost bring tears to my eyes. [I had to swap the entire fucking system UI font via a registry hack](https://gist.github.com/zmwangx/0d638102c04818f84176dc83096fb46e) to keep tears at bay. Last I heard there are plenty of Chinese folks working in Redmond — hell, I even have acquitances there. How they managed to tolerate this shit for so many years is beyond me.
+
+  Pretty sure I can tell you a lot more if I spent more time with Microsoft products (which is close to zero at the moment).
+
+  Windows is more than thirty years old now, and the UN is more than seventy years old. Yet Redmond still hasn't got the memo on globalization.
+
+  This dissolved into another Microsoft rant. Oh well.
+
 ## Etymology
 
 The word "caterpillar" starts with `cat(1)`, and the body of a caterpillar is segmented.

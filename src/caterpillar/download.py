@@ -159,7 +159,7 @@ def download_m3u8_segments(remote_m3u8_url: str,
         download_args.append((url, index, local_m3u8_file.parent))
         local_segments.append((f'{index}.ts', segment.duration))
 
-    with open(local_m3u8_file, 'w') as fp:
+    with open(local_m3u8_file, 'w', encoding='utf-8') as fp:
         fp.write(generate_m3u8(target_duration, local_segments))
     logger.info(f'generated {local_m3u8_file}')
 
