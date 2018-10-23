@@ -344,6 +344,12 @@ def main() -> int:
         for details""",
     )
     add(
+        "--remove-manifest-on-success",
+        action="store_true",
+        help="""remove manifest file if all downloads are successful
+        (only works in batch mode)""",
+    )
+    add(
         "--workdir",
         type=pathlib.Path,
         help="""working directory to store downloaded segments and other
@@ -462,7 +468,16 @@ def main() -> int:
         for m3u8_url, output in entries:
             sys.stderr.write(f'Downloading {m3u8_url} into "{output}"...\n')
             retvals.append(process_entry(m3u8_url, output, **kwargs))
-        return int(any(retvals))
+        retval = int(any(retvals))
+        if retval == 0 and args.remove_manifest_on_success:
+            try:
+                manifest.unlink()
+            except OSError:
+                logger.error("cannot remove batch mode manifest")
+                if args.debug:
+                    raise
+                return 1
+        return retval
 
 
 if __name__ == "__main__":
