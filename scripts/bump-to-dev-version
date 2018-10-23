@@ -25,7 +25,7 @@ def main():
         sys.exit(f"cannot parse version number: {version}")
     next_dev_version = m["trunk"] + str(int(m["last"]) + 1) + "dev"
     with open(VERSION_PY, "w", encoding="utf-8") as fp:
-        print(f"__version__ = '{next_dev_version}'", file=fp)
+        print(f'__version__ = "{next_dev_version}"', file=fp)
     print(f"version bumped to {next_dev_version}", file=sys.stderr)
 
 
