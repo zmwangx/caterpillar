@@ -12,7 +12,7 @@ VERSION_PY = HERE.parent / "src/caterpillar/version.py"
 def main():
     with open(VERSION_PY, encoding="utf-8") as fp:
         content = fp.read()
-    m = re.match(r"^__version__ = '(?P<version>.*)'", content)
+    m = re.match(r'^__version__ = "(?P<version>.*)"', content)
     if not m:
         sys.exit(f"cannot parse version.py: {content}")
     current_version = m["version"]
