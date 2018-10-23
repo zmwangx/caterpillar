@@ -9,13 +9,7 @@ from typing import Optional, Tuple
 
 import m3u8
 
-from .utils import (
-    abspath,
-    chdir,
-    generate_m3u8,
-    logger,
-    should_log_info,
-)
+from .utils import abspath, chdir, generate_m3u8, logger, should_log_info
 
 
 # If ignore_errors is True, blast through non-monotonous DTS errors
@@ -34,25 +28,45 @@ from .utils import (
 #
 # Returns None if the merge succeeds, or the basename of the first bad
 # segment if non-monotonous DTS is detected.
-def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
-                  ignore_errors: bool = False) -> Optional[str]:
-    logger.info(f'attempting to merge {m3u8_file} into {output}')
+def attempt_merge(
+    m3u8_file: pathlib.Path, output: pathlib.Path, ignore_errors: bool = False
+) -> Optional[str]:
+    logger.info(f"attempting to merge {m3u8_file} into {output}")
 
     m3u8_obj = m3u8.load(m3u8_file.as_posix())
     if len(m3u8_obj.segments) == 1:
         # Only one segment, cannot further subdivide, so ignore whatever
         # problems there may be.
-        logger.info(f'only one segment in playlist; ignoring errors and warnings')
+        logger.info(f"only one segment in playlist; ignoring errors and warnings")
         ignore_errors = True
 
     regular_pattern = re.compile(r"Opening '(?P<path>.*\.ts)' for reading")
     error_pattern = re.compile(
-        r'(Non-monotonous DTS in output stream|out of range for mov/mp4 format)')
-    command = ['ffmpeg', '-hide_banner', '-loglevel', 'info',
-               '-f', 'hls', '-i', m3u8_file.as_posix(), '-c', 'copy', '-y', output.as_posix()]
-    p = subprocess.Popen(command, stdin=subprocess.DEVNULL, stderr=subprocess.PIPE,
-                         universal_newlines=True, bufsize=1,
-                         encoding='utf-8', errors='backslashreplace')
+        r"(Non-monotonous DTS in output stream|out of range for mov/mp4 format)"
+    )
+    command = [
+        "ffmpeg",
+        "-hide_banner",
+        "-loglevel",
+        "info",
+        "-f",
+        "hls",
+        "-i",
+        m3u8_file.as_posix(),
+        "-c",
+        "copy",
+        "-y",
+        output.as_posix(),
+    ]
+    p = subprocess.Popen(
+        command,
+        stdin=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+        bufsize=1,
+        encoding="utf-8",
+        errors="backslashreplace",
+    )
     last_read_segment = None
     for line in p.stderr:
         m = regular_pattern.search(line)
@@ -62,16 +76,18 @@ def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
             sys.stderr.write(line)
             sys.stderr.flush()
         if m:
-            last_read_segment = os.path.basename(m['path'])
+            last_read_segment = os.path.basename(m["path"])
             continue
         if ignore_errors:
             continue
         if error_pattern.search(line):
             assert last_read_segment
-            logger.warning(f'DTS jump detected in {last_read_segment}')
+            logger.warning(f"DTS jump detected in {last_read_segment}")
             if last_read_segment == m3u8_obj.segments[0].uri:
-                logger.warning(f'{last_read_segment} is the first segment in playlist; '
-                               f'splitting at the next segment')
+                logger.warning(
+                    f"{last_read_segment} is the first segment in playlist; "
+                    f"splitting at the next segment"
+                )
                 split_point = m3u8_obj.segments[1].uri
             else:
                 split_point = last_read_segment
@@ -98,8 +114,8 @@ def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
             return split_point
     returncode = p.wait()
     if returncode != 0:
-        logger.error(f'ffmpeg failed with exit status {returncode}')
-        raise RuntimeError('unknown error occurred during merging')
+        logger.error(f"ffmpeg failed with exit status {returncode}")
+        raise RuntimeError("unknown error occurred during merging")
     else:
         return None
 
@@ -109,9 +125,12 @@ def attempt_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
 # second file after splitting.
 #
 # It's safe to overwrite the source file with one of the destinations.
-def split_m3u8(source: pathlib.Path, destinations: Tuple[pathlib.Path, pathlib.Path],
-               split_point: str) -> None:
-    logger.info(f'splitting {source} at {split_point}')
+def split_m3u8(
+    source: pathlib.Path,
+    destinations: Tuple[pathlib.Path, pathlib.Path],
+    split_point: str,
+) -> None:
+    logger.info(f"splitting {source} at {split_point}")
     m3u8_obj = m3u8.load(source.as_posix())
     target_duration = m3u8_obj.target_duration
     part1_segments = []
@@ -126,12 +145,12 @@ def split_m3u8(source: pathlib.Path, destinations: Tuple[pathlib.Path, pathlib.P
         else:
             part1_segments.append(tup)
     dest1, dest2 = destinations
-    with open(dest1, 'w', encoding='utf-8') as fp:
+    with open(dest1, "w", encoding="utf-8") as fp:
         fp.write(generate_m3u8(target_duration, part1_segments))
-    logger.info(f'wrote {dest1}')
-    with open(dest2, 'w', encoding='utf-8') as fp:
+    logger.info(f"wrote {dest1}")
+    with open(dest2, "w", encoding="utf-8") as fp:
         fp.write(generate_m3u8(target_duration, part2_segments))
-    logger.info(f'wrote {dest2}')
+    logger.info(f"wrote {dest2}")
 
 
 # concat_method is either 'concat_demuxer'[1] or 'concat_protocol'[2].
@@ -143,53 +162,83 @@ def split_m3u8(source: pathlib.Path, destinations: Tuple[pathlib.Path, pathlib.P
 #
 # [1] https://ffmpeg.org/ffmpeg-all.html#concat-1
 # [2] https://ffmpeg.org/ffmpeg-all.html#concat-2
-def incremental_merge(m3u8_file: pathlib.Path, output: pathlib.Path,
-                      concat_method: str = 'concat_demuxer'):
+def incremental_merge(
+    m3u8_file: pathlib.Path, output: pathlib.Path, concat_method: str = "concat_demuxer"
+):
     # Resolve output so that we don't write to a different relative path
     # later when we run FFmpeg from a different pwd.
     output = abspath(output)
     directory = m3u8_file.parent
     playlist_index = 1
-    playlist = directory / f'{playlist_index}.m3u8'
+    playlist = directory / f"{playlist_index}.m3u8"
     shutil.copyfile(m3u8_file, playlist)
 
-    intermediate_dir = directory / 'intermediate'
+    intermediate_dir = directory / "intermediate"
     intermediate_dir.mkdir(exist_ok=True)
 
     while True:
-        merge_dest = intermediate_dir / f'{playlist_index}.mp4'
+        merge_dest = intermediate_dir / f"{playlist_index}.mp4"
         split_point = attempt_merge(playlist, merge_dest)
         if not split_point:
             break
         playlist_index += 1
-        next_playlist = directory / f'{playlist_index}.m3u8'
+        next_playlist = directory / f"{playlist_index}.m3u8"
         split_m3u8(playlist, (playlist, next_playlist), split_point)
         attempt_merge(playlist, merge_dest, ignore_errors=True)
         playlist = next_playlist
 
     with chdir(intermediate_dir):
-        if concat_method == 'concat_demuxer':
-            with open('concat.txt', 'w', encoding='utf-8') as fp:
+        if concat_method == "concat_demuxer":
+            with open("concat.txt", "w", encoding="utf-8") as fp:
                 for index in range(1, playlist_index + 1):
-                    print(f'file {index}.mp4', file=fp)
+                    print(f"file {index}.mp4", file=fp)
 
-            command = ['ffmpeg', '-hide_banner', '-loglevel', 'info',
-                       '-f', 'concat', '-i', 'concat.txt',
-                       '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-movflags', 'faststart',
-                       '-y', output.as_posix()]
-        elif concat_method == 'concat_protocol':
-            ffmpeg_input = 'concat:' + '|'.join(f'{i}.mp4' for i in range(1, playlist_index + 1))
-            command = ['ffmpeg', '-hide_banner', '-loglevel', 'info', '-i', ffmpeg_input,
-                       '-c', 'copy', '-bsf:a', 'aac_adtstoasc', '-movflags', 'faststart',
-                       '-y', output.as_posix()]
+            command = [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "info",
+                "-f",
+                "concat",
+                "-i",
+                "concat.txt",
+                "-c",
+                "copy",
+                "-bsf:a",
+                "aac_adtstoasc",
+                "-movflags",
+                "faststart",
+                "-y",
+                output.as_posix(),
+            ]
+        elif concat_method == "concat_protocol":
+            ffmpeg_input = "concat:" + "|".join(
+                f"{i}.mp4" for i in range(1, playlist_index + 1)
+            )
+            command = [
+                "ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "info",
+                "-i",
+                ffmpeg_input,
+                "-c",
+                "copy",
+                "-bsf:a",
+                "aac_adtstoasc",
+                "-movflags",
+                "faststart",
+                "-y",
+                output.as_posix(),
+            ]
         else:
             raise NotImplementedError(f"unrecognized concat method '{concat_method}'")
 
         try:
-            logger.info('merging intermediate products...')
+            logger.info("merging intermediate products...")
             subprocess.run(command, stdin=subprocess.DEVNULL, check=True)
         except subprocess.CalledProcessError as e:
-            logger.error(f'ffmpeg failed with exit status {e.returncode}')
-            raise RuntimeError('unknown error occurred during merging')
+            logger.error(f"ffmpeg failed with exit status {e.returncode}")
+            raise RuntimeError("unknown error occurred during merging")
         else:
-            logger.info(f'merged into {output}')
+            logger.info(f"merged into {output}")

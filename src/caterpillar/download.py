@@ -34,7 +34,7 @@ monkeypatch_get_terminal_size()
 # Note that using the Date header for mtime is non-standard. Neither
 # wget or aria2 considers the Date header.
 def get_mtime(r: requests.Response) -> Optional[int]:
-    modified = r.headers.get('Last-Modified') or r.headers.get('Date')
+    modified = r.headers.get("Last-Modified") or r.headers.get("Date")
     if not modified:
         return None
     try:
@@ -47,16 +47,22 @@ def get_mtime(r: requests.Response) -> Optional[int]:
 #
 # If server_timestamp is True, set mtime of the downloaded file
 # according to timestamp reported by server.
-def resumable_download(url: str, file: pathlib.Path, server_timestamp: bool = False) -> bool:
+def resumable_download(
+    url: str, file: pathlib.Path, server_timestamp: bool = False
+) -> bool:
     existing_bytes = file.stat().st_size if file.is_file() else 0
     try:
-        logger.debug(f'GET {url}')
-        r = requests.get(url, headers={'Range': f'bytes={existing_bytes}-'},
-                         stream=True, timeout=REQUESTS_TIMEOUT)
+        logger.debug(f"GET {url}")
+        r = requests.get(
+            url,
+            headers={"Range": f"bytes={existing_bytes}-"},
+            stream=True,
+            timeout=REQUESTS_TIMEOUT,
+        )
         if r.status_code not in {200, 206}:
-            logger.error(f'GET {url}: HTTP {r.status_code}')
+            logger.error(f"GET {url}: HTTP {r.status_code}")
             return False
-        with open(file, 'ab') as fp:
+        with open(file, "ab") as fp:
             for chunk in r.iter_content(chunk_size=CHUNK_SIZE):
                 if chunk:
                     fp.write(chunk)
@@ -65,13 +71,13 @@ def resumable_download(url: str, file: pathlib.Path, server_timestamp: bool = Fa
             if mtime is not None:
                 atime = time.time()
                 try:
-                    logger.debug(f'setting mtime on {file} to {mtime}')
+                    logger.debug(f"setting mtime on {file} to {mtime}")
                     os.utime(file, times=(atime, mtime))
                 except OSError:
-                    logger.warning(f'GET {url}: failed to set mtime on {file}')
+                    logger.warning(f"GET {url}: failed to set mtime on {file}")
         return True
     except Exception:
-        logger.exc_warning(f'GET {url}')
+        logger.exc_warning(f"GET {url}")
         return False
 
 
@@ -79,10 +85,10 @@ def resumable_download(url: str, file: pathlib.Path, server_timestamp: bool = Fa
 #
 # If server_timestamp is True, set mtime of the downloaded file
 # according to timestamp reported by server.
-def resumable_download_with_retries(url: str, file: pathlib.Path,
-                                    max_retries: int = 2,
-                                    server_timestamp: bool = False) -> bool:
-    incomplete_file = file.with_suffix(file.suffix + '.incomplete')
+def resumable_download_with_retries(
+    url: str, file: pathlib.Path, max_retries: int = 2, server_timestamp: bool = False
+) -> bool:
+    incomplete_file = file.with_suffix(file.suffix + ".incomplete")
 
     # If the file, without the .incomplete suffix, is already present,
     # assume it has been downloaded.
@@ -96,25 +102,28 @@ def resumable_download_with_retries(url: str, file: pathlib.Path,
             return True
 
         if retries >= max_retries:
-            logger.error(f'GET {url}: failed after {max_retries} retries')
+            logger.error(f"GET {url}: failed after {max_retries} retries")
             return False
 
         retries += 1
         wait_time = min(2 ** retries, MAX_RETRY_INTERVAL)
-        logger.warning(f'GET {url}: retrying after {wait_time} seconds...')
+        logger.warning(f"GET {url}: retrying after {wait_time} seconds...")
         time.sleep(wait_time)
 
 
 # Returns a bool indicating success (True) or failure (False).
 def download_m3u8_file(m3u8_url: str, file: pathlib.Path) -> bool:
-    logger.info(f'downloading {m3u8_url} to {file} ...')
+    logger.info(f"downloading {m3u8_url} to {file} ...")
     return resumable_download_with_retries(m3u8_url, file, server_timestamp=True)
 
 
 # Returns a bool indicating success (True) or failure (False).
-def download_segment(url: str, index: int, directory: pathlib.Path,
-                     max_retries: int = 2) -> bool:
-    return resumable_download_with_retries(url, directory / f'{index}.ts', max_retries=max_retries)
+def download_segment(
+    url: str, index: int, directory: pathlib.Path, max_retries: int = 2
+) -> bool:
+    return resumable_download_with_retries(
+        url, directory / f"{index}.ts", max_retries=max_retries
+    )
 
 
 # download_segment wrapper that takes all arguments as a single tuple,
@@ -138,17 +147,19 @@ def _init_worker():
 #
 # Returns a bool indicating success (True) or failure (False). Note that
 # an empty playlist (invalid) automatically results in a failure.
-def download_m3u8_segments(remote_m3u8_url: str,
-                           remote_m3u8_file: pathlib.Path,
-                           local_m3u8_file: pathlib.Path,
-                           jobs: int = None) -> bool:
+def download_m3u8_segments(
+    remote_m3u8_url: str,
+    remote_m3u8_file: pathlib.Path,
+    local_m3u8_file: pathlib.Path,
+    jobs: int = None,
+) -> bool:
     if jobs is None:
         jobs = (os.cpu_count() or 4) * 2
 
     try:
         remote_m3u8_obj = m3u8.load(remote_m3u8_file.as_posix())
     except Exception:
-        logger.exc_error(f'failed to parse {remote_m3u8_file}')
+        logger.exc_error(f"failed to parse {remote_m3u8_file}")
         return False
 
     target_duration = remote_m3u8_obj.target_duration
@@ -157,41 +168,44 @@ def download_m3u8_segments(remote_m3u8_url: str,
     for index, segment in enumerate(remote_m3u8_obj.segments):
         url = urllib.parse.urljoin(remote_m3u8_url, segment.uri)
         download_args.append((url, index, local_m3u8_file.parent))
-        local_segments.append((f'{index}.ts', segment.duration))
+        local_segments.append((f"{index}.ts", segment.duration))
 
-    with open(local_m3u8_file, 'w', encoding='utf-8') as fp:
+    with open(local_m3u8_file, "w", encoding="utf-8") as fp:
         fp.write(generate_m3u8(target_duration, local_segments))
-    logger.info(f'generated {local_m3u8_file}')
+    logger.info(f"generated {local_m3u8_file}")
 
     total = len(download_args)
     if total == 0:
-        logger.error(f'{remote_m3u8_file}: empty playlist')
+        logger.error(f"{remote_m3u8_file}: empty playlist")
         return False
     jobs = min(jobs, total)
     with multiprocessing.Pool(jobs, _init_worker) as pool:
         num_success = 0
         num_failure = 0
-        logger.info(f'downloading {total} segments with {jobs} workers...')
-        progress_bar_generator = (click.progressbar if should_log_warning() else
-                                  stub_context_manager)
+        logger.info(f"downloading {total} segments with {jobs} workers...")
+        progress_bar_generator = (
+            click.progressbar if should_log_warning() else stub_context_manager
+        )
         progress_bar_props = dict(
             width=0,  # Full width
-            bar_template='[%(bar)s] %(info)s',
+            bar_template="[%(bar)s] %(info)s",
             show_pos=True,
             length=total,
         )
         with progress_bar_generator(**progress_bar_props) as bar:  # type: ignore
-            for success in pool.imap_unordered(_download_segment_mappable, download_args):
+            for success in pool.imap_unordered(
+                _download_segment_mappable, download_args
+            ):
                 if success:
                     num_success += 1
                 else:
                     num_failure += 1
-                logger.debug(f'progress: {num_success}/{num_failure}/{total}')
+                logger.debug(f"progress: {num_success}/{num_failure}/{total}")
                 bar.update(1)
 
         if num_failure > 0:
-            logger.error(f'failed to download {num_failure} segments')
+            logger.error(f"failed to download {num_failure} segments")
             return False
         else:
-            logger.info(f'finished downloading all {total} segments')
+            logger.info(f"finished downloading all {total} segments")
             return True

@@ -10,7 +10,6 @@ import xdgappdirs
 
 
 class Logger(logging.Logger):
-
     def exc_error(self, msg: str, exception: BaseException = None) -> None:
         self.error(self._format_exception_message(msg, exception))
 
@@ -18,14 +17,16 @@ class Logger(logging.Logger):
         self.warning(self._format_exception_message(msg, exception))
 
     @staticmethod
-    def _format_exception_message(lead_msg: str, exception: BaseException = None) -> str:
+    def _format_exception_message(
+        lead_msg: str, exception: BaseException = None
+    ) -> str:
         if exception is None:
             exception = sys.exc_info()[1]
         if exception is None:
-            return ''
-        exc_desc = f'{excname(exception)}: {exception}'
+            return ""
+        exc_desc = f"{excname(exception)}: {exception}"
         if lead_msg:
-            return f'{lead_msg}: {exc_desc}'
+            return f"{lead_msg}: {exc_desc}"
         else:
             return exc_desc
 
@@ -33,18 +34,18 @@ class Logger(logging.Logger):
 logging.setLoggerClass(Logger)
 # We have to cast here due to logging.getLogger's stub being inflexible.
 # https://github.com/python/typeshed/issues/1801
-logger = cast(Logger, logging.getLogger('caterpillar'))
-_fmt = logging.Formatter(fmt='[%(levelname)s] %(message)s')
+logger = cast(Logger, logging.getLogger("caterpillar"))
+_fmt = logging.Formatter(fmt="[%(levelname)s] %(message)s")
 _sh = logging.StreamHandler()
 _sh.setFormatter(_fmt)
 logger.addHandler(_sh)
 logger.setLevel(logging.WARNING)
 
-_dirs = xdgappdirs.AppDirs('caterpillar', 'org.zhimingwang', roaming=True)
-UESR_CONFIG_DIR = os.getenv('CATERPILLAR_USER_CONFIG_DIR') or _dirs.user_config_dir
-USER_DATA_DIR = os.getenv('CATERPILLAR_USER_DATA_DIR') or _dirs.user_data_dir
-USER_CONFIG_DISABLED = bool(os.getenv('CATERPILLAR_NO_USER_CONFIG'))
-CACHING_DISABLED = bool(os.getenv('CATERPILLAR_NO_CACHE'))
+_dirs = xdgappdirs.AppDirs("caterpillar", "org.zhimingwang", roaming=True)
+UESR_CONFIG_DIR = os.getenv("CATERPILLAR_USER_CONFIG_DIR") or _dirs.user_config_dir
+USER_DATA_DIR = os.getenv("CATERPILLAR_USER_DATA_DIR") or _dirs.user_data_dir
+USER_CONFIG_DISABLED = bool(os.getenv("CATERPILLAR_NO_USER_CONFIG"))
+CACHING_DISABLED = bool(os.getenv("CATERPILLAR_NO_CACHE"))
 
 
 def increase_logging_verbosity(num_levels):
@@ -72,10 +73,10 @@ def should_log_debug():
 # Returns the qualified name of an exeception.
 def excname(value):
     etype = type(value)
-    if etype.__module__ == 'builtins':
+    if etype.__module__ == "builtins":
         return etype.__name__
     else:
-        return '%s.%s' % (etype.__module__, etype.__name__)
+        return "%s.%s" % (etype.__module__, etype.__name__)
 
 
 # Resolve a pathlib.Path that may not exist yet. Assumes that the parent
@@ -102,7 +103,7 @@ def chdir(directory):
 # overflow problem on Windows consoles.
 def monkeypatch_get_terminal_size():
     # Only monkey patch on NT, and only monkey patch once.
-    if os.name != 'nt' or hasattr(shutil, 'original_get_terminal_size'):
+    if os.name != "nt" or hasattr(shutil, "original_get_terminal_size"):
         return
     shutil.original_get_terminal_size = shutil.get_terminal_size
 
@@ -119,7 +120,6 @@ def monkeypatch_get_terminal_size():
 # not previously set are regarded as a stub method that takes any
 # positional and keyword arguments and returns None.
 class Stub(object):
-
     def __getattr__(self, name):
         def stub(*_, **__):
             return
@@ -148,12 +148,12 @@ def stub_context_manager(*_, **__):
 # [1] https://tools.ietf.org/html/rfc8216#section-7
 def generate_m3u8(target_duration: int, segments: Iterable[Tuple[str, float]]):
     lines = []
-    lines.append('#EXTM3U')
-    lines.append('#EXT-X-VERSION:3')
-    lines.append(f'#EXT-X-TARGETDURATION:{target_duration}')
+    lines.append("#EXTM3U")
+    lines.append("#EXT-X-VERSION:3")
+    lines.append(f"#EXT-X-TARGETDURATION:{target_duration}")
     for url, duration in segments:
-        lines.append(f'#EXTINF:{duration},')
+        lines.append(f"#EXTINF:{duration},")
         lines.append(url)
-    lines.append('#EXT-X-ENDLIST')
-    lines.append('')
-    return '\n'.join(lines)
+    lines.append("#EXT-X-ENDLIST")
+    lines.append("")
+    return "\n".join(lines)

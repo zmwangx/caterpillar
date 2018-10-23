@@ -9,7 +9,7 @@ from .utils import CACHING_DISABLED, USER_DATA_DIR, abspath
 
 
 SCHEMA_VERSION = 1
-DATABASE_PATH = pathlib.Path(USER_DATA_DIR).joinpath('data.db')
+DATABASE_PATH = pathlib.Path(USER_DATA_DIR).joinpath("data.db")
 CACHE_EXPIRY_THRESHOLD = 3600 * 24 * 7  # A week
 
 database = peewee.SqliteDatabase(None)
@@ -43,10 +43,10 @@ def initialize_database(path: pathlib.Path = None) -> None:
     database.init(path.as_posix())
     database.connect()
 
-    schema_version = database.execute_sql('PRAGMA user_version;').fetchone()[0]
+    schema_version = database.execute_sql("PRAGMA user_version;").fetchone()[0]
     if schema_version == 0:
         # New database
-        database.execute_sql(f'PRAGMA user_version = {SCHEMA_VERSION};')
+        database.execute_sql(f"PRAGMA user_version = {SCHEMA_VERSION};")
 
     database.create_tables([URL], safe=True)
 
@@ -64,6 +64,7 @@ def ensure_database(func: AnyCallable) -> AnyCallable:
     def wrapper(*args, **kwargs):
         initialize_database()
         return func(*args, **kwargs)
+
     return wrapper
 
 
@@ -85,7 +86,9 @@ def requires_cache(fallback: Any = None) -> Callable[[AnyCallable], AnyCallable]
                 return fallback
             else:
                 return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 

@@ -20,7 +20,7 @@ dist:
 tests:
 	tox
 
-qa: flake8 pylint mypy
+qa: flake8 pylint mypy black
 
 flake8:
 	flake8 src/caterpillar tests
@@ -30,3 +30,6 @@ pylint:
 
 mypy:
 	mypy src/caterpillar
+
+black:
+	git ls-files | grep '\.py$$' | xargs black --check --diff
