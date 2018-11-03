@@ -23,7 +23,7 @@ def main():
     m = re.match(r"^(?P<trunk>.*?)(?P<last>\d+)$", current_version)
     if not m:
         sys.exit(f"cannot parse version number: {version}")
-    next_dev_version = m["trunk"] + str(int(m["last"]) + 1) + "dev"
+    next_dev_version = m["trunk"] + str(int(m["last"]) + 1) + ".dev0"
     with open(VERSION_PY, "w", encoding="utf-8") as fp:
         print(f'__version__ = "{next_dev_version}"', file=fp)
     print(f"version bumped to {next_dev_version}", file=sys.stderr)
