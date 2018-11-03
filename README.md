@@ -79,9 +79,9 @@ git pull origin master
 ```console
 $ caterpillar -h
 usage: caterpillar [-h] [-b] [-e] [-f] [-j JOBS] [-k]
-                   [-m {concat_demuxer,concat_protocol,0,1}]
-                   [--remove-manifest-on-success] [--workdir WORKDIR] [--wipe]
-                   [-v] [-q] [--debug] [-V]
+                   [-m {concat_demuxer,concat_protocol,0,1}] [-r RETRIES]
+                   [--remove-manifest-on-success] [--workdir WORKDIR]
+                   [--workroot WORKROOT] [--wipe] [-v] [-q] [--debug] [-V]
                    m3u8_url [output]
 
 positional arguments:
@@ -103,14 +103,25 @@ optional arguments:
   -m {concat_demuxer,concat_protocol,0,1}, --concat-method {concat_demuxer,concat_protocol,0,1}
                         method for concatenating intermediate files (default
                         is 'concat_demuxer'); see
-                        https://github.com/zmwangx/caterpillar/#notes for
-                        details
+                        https://github.com/zmwangx/caterpillar/#notes-and-limitations
+                        for details
+  -r RETRIES, --retries RETRIES
+                        number of times to retry when a possibly recoverable
+                        error (e.g. download issue) occurs; default is 2, and
+                        0 turns off retries
   --remove-manifest-on-success
                         remove manifest file if all downloads are successful
                         (only works in batch mode)
   --workdir WORKDIR     working directory to store downloaded segments and
                         other intermediate files (default is automatically
                         determined based on URL and output file)
+  --workroot WORKROOT   if nonempty, this path is used as the root directory
+                        for all processing, under which both the working
+                        directory and final destination are mapped; after
+                        merging is done, the artifact is eventually moved to
+                        the destination (use cases: destination on a slow HDD
+                        with workroot on a fast SSD; destination on a
+                        networked drive with workroot on a local drive)
   --wipe                wipe all downloaded files (if any) and start over
   -v, --verbose         increase logging verbosity (can be specified multiple
                         times)
