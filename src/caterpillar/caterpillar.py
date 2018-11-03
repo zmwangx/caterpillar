@@ -230,7 +230,7 @@ def map_path(path: pathlib.Path, root: pathlib.Path) -> pathlib.Path:
         raise ValueError(f"unrecognized drive {drive}; please report as bug")
     name = path.name
     ancestor = path.parent
-    segments = []
+    segments = []  # type: List[str]
     while ancestor.name:
         segments.insert(0, ancestor.name)
         ancestor = ancestor.parent
@@ -240,9 +240,10 @@ def map_path(path: pathlib.Path, root: pathlib.Path) -> pathlib.Path:
     return mapped_dir.joinpath(name)
 
 
-def rmdir_p(path: pathlib.Path, *, root: pathlib.Path = None) -> pathlib.Path:
+def rmdir_p(path: pathlib.Path, *, root: pathlib.Path = None) -> None:
     path = path.resolve()
-    root = root.resolve()
+    if root:
+        root = root.resolve()
     while path.name and path != root:
         try:
             path.rmdir()
