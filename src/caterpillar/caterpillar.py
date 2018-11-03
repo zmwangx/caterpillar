@@ -148,13 +148,19 @@ def load_user_config() -> List[str]:
 def prepare_working_directory(
     m3u8_url: str,
     output_file: pathlib.Path,
+    *,
+    workroot: pathlib.Path = None,
     user_specified_workdir: pathlib.Path = None,
     wipe: bool = False,
 ) -> Optional[pathlib.Path]:
     if user_specified_workdir:
         workdir = user_specified_workdir
+        if workroot:
+            workdir = map_path(workdir, workroot)
     else:
         workdir = output_file.with_suffix("")
+        if workroot:
+            workdir = map_path(workdir, workroot)
         try:
             cached_workdir = persistence.get_workdir(m3u8_url)
         except peewee.PeeweeException:
@@ -187,7 +193,8 @@ def prepare_working_directory(
             return None
 
     try:
-        workdir.mkdir(exist_ok=True)
+        # Only allow creating parent directories if using a nonempty workroot.
+        workdir.mkdir(parents=bool(workroot), exist_ok=True)
     except OSError:
         logger.exc_error(f"failed to create {workdir}")
         return None
@@ -200,12 +207,57 @@ def prepare_working_directory(
     return workdir
 
 
+# Map path to an equivalent subpath of root, and create all missing
+# ancestor directories. E.g., /home/caterpillar mapped under
+# /var/run/caterpillar becomes /var/run/caterpillar/home/caterpillar.
+#
+# On Windows, drive letters are mapped to direct children of the
+# workroot; e.g., C: mapped under C:\Users\caterpillar\AppData\Local\Temp
+# becomes C:\Users\caterpillar\AppData\Local\Temp\C\. UNC shares
+# \\host\share are mapped to host\share.
+def map_path(path: pathlib.Path, root: pathlib.Path) -> pathlib.Path:
+    path = path.resolve()
+    drive = path.drive
+    if not drive:
+        subdir = ""
+    elif drive.endswith(":") and not drive.startswith(os.sep):
+        # Window drive letter, e.g., C:
+        subdir = drive[:-1] + os.sep
+        # UNC \\host\share
+    elif drive.startswith(r"\\"):
+        subdir = drive[2:] + os.sep
+    else:
+        raise ValueError(f"unrecognized drive {drive}; please report as bug")
+    name = path.name
+    ancestor = path.parent
+    segments = []
+    while ancestor.name:
+        segments.insert(0, ancestor.name)
+        ancestor = ancestor.parent
+    subdir += os.sep.join(segments)
+    mapped_dir = root.joinpath(subdir)
+    mapped_dir.mkdir(parents=True, exist_ok=True)
+    return mapped_dir.joinpath(name)
+
+
+def rmdir_p(path: pathlib.Path, *, root: pathlib.Path = None) -> pathlib.Path:
+    path = path.resolve()
+    root = root.resolve()
+    while path.name and path != root:
+        try:
+            path.rmdir()
+        except OSError:
+            break
+        path = path.parent
+
+
 def process_entry(
     m3u8_url: str,
     output: pathlib.Path,
     force: bool = False,
     exist_ok: bool = False,
     workdir: pathlib.Path = None,
+    workroot: pathlib.Path = None,
     wipe: bool = False,
     keep: bool = False,
     jobs: int = None,
@@ -237,6 +289,17 @@ def process_entry(
             )
             return 1
 
+    merge_dest = output
+    if workroot:
+        merge_dest = map_path(output, workroot)
+
+    if merge_dest.exists() and not force:
+        logger.critical(
+            f'"{merge_dest}"" already exists; '
+            "specify --force to overwrite it, or manually remove it and try again"
+        )
+        return 1
+
     if not output.exists():
         # Make sure output (especially if it's auto-deduced from URL, which
         # might contain reserved characters on Windows) is a valid path and is
@@ -251,7 +314,11 @@ def process_entry(
 
     remote_m3u8_url = m3u8_url
     working_directory = prepare_working_directory(
-        remote_m3u8_url, output, user_specified_workdir=workdir, wipe=wipe
+        remote_m3u8_url,
+        output,
+        workroot=workroot,
+        user_specified_workdir=workdir,
+        wipe=wipe,
     )
     if not working_directory:
         logger.critical("failed to prepare working directory")
@@ -268,7 +335,16 @@ def process_entry(
         ):
             logger.critical("failed to download some segments")
             return 1
-        merge.incremental_merge(local_m3u8_file, output, concat_method=concat_method)
+        merge.incremental_merge(
+            local_m3u8_file, merge_dest, concat_method=concat_method
+        )
+        if output != merge_dest:
+            try:
+                logger.info(f'moving "{merge_dest}" to "{output}"...')
+                shutil.move(merge_dest, output)
+            except OSError:
+                logger.critical(f'failed to move "{merge_dest}" to "{output}"')
+            rmdir_p(merge_dest.parent, root=workroot)
         try:
             atime = time.time()
             mtime = os.stat(remote_m3u8_file).st_mtime
@@ -282,6 +358,8 @@ def process_entry(
             except peewee.PeeweeException:
                 logger.exc_error("exception when updating cache")
             shutil.rmtree(working_directory)
+            if workroot:
+                rmdir_p(working_directory.parent, root=workroot)
     except RuntimeError as e:
         logger.critical(str(e))
         return 1
@@ -357,6 +435,15 @@ def main() -> int:
         URL and output file)""",
     )
     add(
+        "--workroot",
+        help="""if nonempty, this path is used as the root directory for
+        all processing, under which both the working directory and final
+        destination are mapped; after merging is done, the artifact is
+        eventually moved to the destination (use cases: destination on
+        a slow HDD with workroot on a fast SSD; destination on a
+        networked drive with workroot on a local drive)""",
+    )
+    add(
         "--wipe",
         action="store_true",
         help="wipe all downloaded files (if any) and start over",
@@ -402,7 +489,14 @@ def main() -> int:
             logger.critical("workdir not allowed in batch mode")
             return 1
 
-    if args.workdir and not args.workdir.parent.exists():
+    if args.workroot:
+        args.workroot = pathlib.Path(args.workroot)
+    else:
+        args.workroot = None
+    if args.workroot and not args.workroot.is_dir():
+        logger.critical(f"{args.workroot} does not exist or is not a directory")
+
+    if not args.workroot and args.workdir and not args.workdir.parent.exists():
         logger.critical(f"{args.workdir.parent} does not exist")
         return 1
 
@@ -419,6 +513,7 @@ def main() -> int:
         force=args.force,
         exist_ok=args.batch and args.exist_ok,
         workdir=args.workdir,
+        workroot=args.workroot,
         wipe=args.wipe,
         keep=args.keep,
         jobs=args.jobs,
