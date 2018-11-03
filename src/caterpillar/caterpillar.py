@@ -345,6 +345,7 @@ def process_entry(
                 shutil.move(merge_dest, output)
             except OSError:
                 logger.critical(f'failed to move "{merge_dest}" to "{output}"')
+                return 1
             rmdir_p(merge_dest.parent, root=workroot)
         try:
             atime = time.time()
