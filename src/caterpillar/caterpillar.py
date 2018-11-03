@@ -263,6 +263,7 @@ def process_entry(
     keep: bool = False,
     jobs: int = None,
     concat_method: str = "concat_demuxer",
+    retries: int = 0,
 ) -> int:
     if output is None:
         stem = pathlib.Path(urllib.parse.urlsplit(m3u8_url).path).stem
@@ -326,45 +327,52 @@ def process_entry(
         return 1
     remote_m3u8_file = working_directory / "remote.m3u8"
     local_m3u8_file = working_directory / "local.m3u8"
-    try:
-        if not download.download_m3u8_file(remote_m3u8_url, remote_m3u8_file):
-            logger.critical(f"failed to download {remote_m3u8_url}")
-            return 1
-        logger.info(f"downloaded {remote_m3u8_file}")
-        if not download.download_m3u8_segments(
-            remote_m3u8_url, remote_m3u8_file, local_m3u8_file, jobs=jobs
-        ):
-            logger.critical("failed to download some segments")
-            return 1
-        merge.incremental_merge(
-            local_m3u8_file, merge_dest, concat_method=concat_method
-        )
-        if output != merge_dest:
-            try:
-                logger.info(f'moving "{merge_dest}" to "{output}"...')
-                shutil.move(merge_dest, output)
-            except OSError:
-                logger.critical(f'failed to move "{merge_dest}" to "{output}"')
-                return 1
-            rmdir_p(merge_dest.parent, root=workroot)
+    for ntry in range(max(retries, 0) + 1):
         try:
-            atime = time.time()
-            mtime = os.stat(remote_m3u8_file).st_mtime
-            logger.debug(f"setting mtime on {output} to {mtime}")
-            os.utime(output, times=(atime, mtime))
-        except OSError:
-            logger.warning(f"failed to set mtime on {output}")
-        if not keep:
+            if not download.download_m3u8_file(remote_m3u8_url, remote_m3u8_file):
+                raise RuntimeError(f"failed to download {remote_m3u8_url}")
+            logger.info(f"downloaded {remote_m3u8_file}")
+            if not download.download_m3u8_segments(
+                remote_m3u8_url, remote_m3u8_file, local_m3u8_file, jobs=jobs
+            ):
+                raise RuntimeError("failed to download some segments")
+            merge.incremental_merge(
+                local_m3u8_file, merge_dest, concat_method=concat_method
+            )
+            if output != merge_dest:
+                try:
+                    logger.info(f'moving "{merge_dest}" to "{output}"...')
+                    shutil.move(merge_dest, output)
+                except OSError:
+                    # This is unlikely a quickly retriable issue, so we
+                    # return an error immediately.
+                    logger.critical(f'failed to move "{merge_dest}" to "{output}"')
+                    return 1
+                rmdir_p(merge_dest.parent, root=workroot)
             try:
-                persistence.drop(remote_m3u8_url)
-            except peewee.PeeweeException:
-                logger.exc_error("exception when updating cache")
-            shutil.rmtree(working_directory)
-            if workroot:
-                rmdir_p(working_directory.parent, root=workroot)
-    except RuntimeError as e:
-        logger.critical(str(e))
-        return 1
+                atime = time.time()
+                mtime = os.stat(remote_m3u8_file).st_mtime
+                logger.debug(f"setting mtime on {output} to {mtime}")
+                os.utime(output, times=(atime, mtime))
+            except OSError:
+                logger.warning(f"failed to set mtime on {output}")
+            if not keep:
+                try:
+                    persistence.drop(remote_m3u8_url)
+                except peewee.PeeweeException:
+                    logger.exc_error("exception when updating cache")
+                shutil.rmtree(working_directory)
+                if workroot:
+                    rmdir_p(working_directory.parent, root=workroot)
+            break
+        except RuntimeError as e:
+            if ntry == retries:
+                logger.critical(str(e))
+                return 1
+            else:
+                logger.error(str(e))
+                logger.warning(f"retrying ({ntry + 1}/{retries}) in 5 seconds...")
+                time.sleep(5)
     return 0
 
 
@@ -422,6 +430,15 @@ def main() -> int:
         help="""method for concatenating intermediate files (default is
         'concat_demuxer'); see https://github.com/zmwangx/caterpillar/#notes
         for details""",
+    )
+    add(
+        "-r",
+        "--retries",
+        type=int,
+        default=2,
+        help="""number of times to retry when a possibly recoverable
+        error (e.g. download issue) occurs; default is 2, and 0 turns
+        off retries""",
     )
     add(
         "--remove-manifest-on-success",
@@ -520,6 +537,7 @@ def main() -> int:
         keep=args.keep,
         jobs=args.jobs,
         concat_method=args.concat_method,
+        retries=args.retries,
     )
 
     if not args.batch:
