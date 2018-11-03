@@ -428,7 +428,8 @@ def main() -> int:
         choices=["concat_demuxer", "concat_protocol", "0", "1"],
         default="concat_demuxer",
         help="""method for concatenating intermediate files (default is
-        'concat_demuxer'); see https://github.com/zmwangx/caterpillar/#notes
+        'concat_demuxer'); see
+        https://github.com/zmwangx/caterpillar/#notes-and-limitations
         for details""",
     )
     add(
