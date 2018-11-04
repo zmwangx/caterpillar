@@ -541,6 +541,10 @@ def main() -> int:
         retries=args.retries,
     )
 
+    if shutil.which("ffmpeg") is None:
+        logger.critical("ffmpeg not found")
+        return 1
+
     if not args.batch:
         return process_entry(args.m3u8_url, args.output, **kwargs)
     else:
