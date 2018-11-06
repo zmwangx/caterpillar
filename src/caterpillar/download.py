@@ -125,12 +125,17 @@ def download_segment(
     )
 
 
-# download_segment wrapper that takes all arguments as a single tuple,
-# so that we can use it with multiprocessing.pool.Pool.map and company.
-# It also gracefully consumes KeyboardInterrupt.
-def _download_segment_mappable(args: Tuple[str, int, pathlib.Path]) -> bool:
+# download_segment wrapper that takes all arguments as a single tuple
+# (with one additional argument: the logging level, so that it can be
+# set correctly for worker processes -- there's no fork on Windows, so
+# the worker processes do not actually inherit logger level), so that we
+# can use it with multiprocessing.pool.Pool.map and company. It also
+# gracefully consumes KeyboardInterrupt.
+def _download_segment_mappable(args: Tuple[str, int, pathlib.Path, int]) -> bool:
     try:
-        return download_segment(*args)
+        *dl_args, logging_level = args
+        logger.setLevel(logging_level)
+        return download_segment(*dl_args)
     except KeyboardInterrupt:
         url, *_ = args
         logger.debug(f"download of {url} has been interrupted")
@@ -172,9 +177,10 @@ def download_m3u8_segments(
     target_duration = remote_m3u8_obj.target_duration
     local_segments = []
     download_args = []
+    logging_level = logger.getEffectiveLevel()
     for index, segment in enumerate(remote_m3u8_obj.segments):
         url = urllib.parse.urljoin(remote_m3u8_url, segment.uri)
-        download_args.append((url, index, local_m3u8_file.parent))
+        download_args.append((url, index, local_m3u8_file.parent, logging_level))
         local_segments.append((f"{index}.ts", segment.duration))
 
     with open(local_m3u8_file, "w", encoding="utf-8") as fp:
