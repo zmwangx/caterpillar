@@ -81,7 +81,8 @@ $ caterpillar -h
 usage: caterpillar [-h] [-b] [-e] [-f] [-j JOBS] [-k]
                    [-m {concat_demuxer,concat_protocol,0,1}] [-r RETRIES]
                    [--remove-manifest-on-success] [--workdir WORKDIR]
-                   [--workroot WORKROOT] [--wipe] [-v] [-q] [--debug] [-V]
+                   [--workroot WORKROOT] [--wipe] [-v] [--progress]
+                   [--no-progress] [-q] [--debug] [-V]
                    m3u8_url [output]
 
 positional arguments:
@@ -125,6 +126,10 @@ optional arguments:
   --wipe                wipe all downloaded files (if any) and start over
   -v, --verbose         increase logging verbosity (can be specified multiple
                         times)
+  --progress            show download progress bar regardless of verbosity
+                        level
+  --no-progress         suppress download progress bar regardless of verbosity
+                        level
   -q, --quiet           decrease logging verbosity (can be specified multiple
                         times)
   --debug               output debugging information (also implies highest
