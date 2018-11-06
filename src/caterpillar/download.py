@@ -128,14 +128,20 @@ def download_segment(
 
 # download_segment wrapper that takes all arguments as a single tuple,
 # so that we can use it with multiprocessing.pool.Pool.map and company.
+# It also gracefully consumes KeyboardInterrupt.
 def _download_segment_mappable(args: Tuple[str, int, pathlib.Path]) -> bool:
-    return download_segment(*args)
+    try:
+        return download_segment(*args)
+    except KeyboardInterrupt:
+        url, *_ = args
+        logger.debug(f"download of {url} has been interrupted")
+        return False
 
 
-def _init_worker():
-    # Ignore SIGINT in worker processes to disable traceback from
-    # each worker on keyboard interrupt.
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
+def _raise_keyboard_interrupt(signum, _):
+    pid = os.getpid()
+    logger.debug(f"pid {pid} received signal {signum}; transforming into SIGINT")
+    raise KeyboardInterrupt
 
 
 # Download all segments in remote_m3u8_file (downloaded from
@@ -179,33 +185,48 @@ def download_m3u8_segments(
         logger.error(f"{remote_m3u8_file}: empty playlist")
         return False
     jobs = min(jobs, total)
-    with multiprocessing.Pool(jobs, _init_worker) as pool:
-        num_success = 0
-        num_failure = 0
-        logger.info(f"downloading {total} segments with {jobs} workers...")
-        progress_bar_generator = (
-            click.progressbar if should_log_warning() else stub_context_manager
-        )
-        progress_bar_props = dict(
-            width=0,  # Full width
-            bar_template="[%(bar)s] %(info)s",
-            show_pos=True,
-            length=total,
-        )
-        with progress_bar_generator(**progress_bar_props) as bar:  # type: ignore
-            for success in pool.imap_unordered(
-                _download_segment_mappable, download_args
-            ):
-                if success:
-                    num_success += 1
-                else:
-                    num_failure += 1
-                logger.debug(f"progress: {num_success}/{num_failure}/{total}")
-                bar.update(1)
+    with multiprocessing.Pool(jobs) as pool:
+        # For the duration of the worker pool, map SIGTERM to SIGINT on
+        # the main process. We only do this after the fork, and restore
+        # the original SIGTERM handler (usually SIG_DFL) at the end of
+        # the pool, because using _raise_keyboard_interrupt as the
+        # SIGTERM handler on workers could somehow lead to dead locks.
+        old_sigterm_handler = signal.signal(signal.SIGTERM, _raise_keyboard_interrupt)
+        try:
+            num_success = 0
+            num_failure = 0
+            logger.info(f"downloading {total} segments with {jobs} workers...")
+            progress_bar_generator = (
+                click.progressbar if should_log_warning() else stub_context_manager
+            )
+            progress_bar_props = dict(
+                width=0,  # Full width
+                bar_template="[%(bar)s] %(info)s",
+                show_pos=True,
+                length=total,
+            )
+            with progress_bar_generator(**progress_bar_props) as bar:  # type: ignore
+                for success in pool.imap_unordered(
+                    _download_segment_mappable, download_args
+                ):
+                    if success:
+                        num_success += 1
+                    else:
+                        num_failure += 1
+                    logger.debug(f"progress: {num_success}/{num_failure}/{total}")
+                    bar.update(1)
 
-        if num_failure > 0:
-            logger.error(f"failed to download {num_failure} segments")
-            return False
-        else:
-            logger.info(f"finished downloading all {total} segments")
-            return True
+            if num_failure > 0:
+                logger.error(f"failed to download {num_failure} segments")
+                return False
+            else:
+                logger.info(f"finished downloading all {total} segments")
+                return True
+        except KeyboardInterrupt:
+            pool.terminate()
+            pool.join()
+            logger.critical("interrupted")
+            # Bubble KeyboardInterrupt to stop retries.
+            raise KeyboardInterrupt
+        finally:
+            signal.signal(signal.SIGTERM, old_sigterm_handler)

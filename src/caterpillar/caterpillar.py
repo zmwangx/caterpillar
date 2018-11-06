@@ -7,7 +7,7 @@ import shutil
 import sys
 import time
 import urllib.parse
-from typing import List, Optional
+from typing import Any, List, Optional
 
 import peewee
 
@@ -255,6 +255,7 @@ def rmdir_p(path: pathlib.Path, *, root: pathlib.Path = None) -> None:
 def process_entry(
     m3u8_url: str,
     output: pathlib.Path,
+    *,
     force: bool = False,
     exist_ok: bool = False,
     workdir: pathlib.Path = None,
@@ -374,6 +375,65 @@ def process_entry(
                 logger.warning(f"retrying ({ntry + 1}/{retries}) in 5 seconds...")
                 time.sleep(5)
     return 0
+
+
+def process_batch(
+    manifest: pathlib.Path,
+    remove_manifest_on_success: bool = False,
+    debug: bool = False,
+    **processing_kwargs: Any,
+) -> int:
+    target_dir = manifest.parent
+    try:
+        entries = []
+        with manifest.open(encoding="utf-8") as fp:
+            manifest_content = fp.read()
+    except OSError:
+        logger.critical("cannot open batch mode manifest", exc_info=debug)
+        if debug:
+            raise
+        return 1
+    except UnicodeDecodeError:
+        logger.critical(
+            "cannot decode batch mode manifest as utf-8; "
+            "see https://git.io/caterpillar-encoding",
+            exc_info=debug,
+        )
+        if debug:
+            raise
+        return 1
+
+    for line in manifest_content.splitlines():
+        try:
+            m3u8_url, filename = line.strip().split("\t")
+            output = target_dir.joinpath(filename)
+            entries.append((m3u8_url, output))
+        except Exception:
+            logger.critical(
+                "malformed line in batch mode manifest: %s", line, exc_info=debug
+            )
+            if debug:
+                raise
+            return 1
+
+    retvals = []
+    count = len(entries)
+    for i, (m3u8_url, output) in enumerate(entries):
+        sys.stderr.write(
+            f'[{i + 1}/{count}] Downloading {m3u8_url} into "{output}"...\n'
+        )
+        retvals.append(process_entry(m3u8_url, output, **processing_kwargs))
+        sys.stderr.write("\n")
+    retval = int(any(retvals))
+    if retval == 0 and remove_manifest_on_success:
+        try:
+            manifest.unlink()
+        except OSError:
+            logger.error("cannot remove batch mode manifest")
+            if debug:
+                raise
+            return 1
+    return retval
 
 
 def main() -> int:
@@ -545,63 +605,19 @@ def main() -> int:
         logger.critical("ffmpeg not found")
         return 1
 
-    if not args.batch:
-        return process_entry(args.m3u8_url, args.output, **kwargs)
-    else:
-        manifest = pathlib.Path(args.m3u8_url).resolve()
-        target_dir = manifest.parent
-        try:
-            entries = []
-            with manifest.open(encoding="utf-8") as fp:
-                manifest_content = fp.read()
-        except OSError:
-            logger.critical("cannot open batch mode manifest", exc_info=args.debug)
-            if args.debug:
-                raise
-            return 1
-        except UnicodeDecodeError:
-            logger.critical(
-                "cannot decode batch mode manifest as utf-8; "
-                "see https://git.io/caterpillar-encoding",
-                exc_info=args.debug,
+    try:
+        if not args.batch:
+            return process_entry(args.m3u8_url, args.output, **kwargs)
+        else:
+            manifest = pathlib.Path(args.m3u8_url).resolve()
+            return process_batch(
+                manifest,
+                remove_manifest_on_success=args.remove_manifest_on_success,
+                debug=args.debug,
+                **kwargs,
             )
-            if args.debug:
-                raise
-            return 1
-
-        for line in manifest_content.splitlines():
-            try:
-                m3u8_url, filename = line.strip().split("\t")
-                output = target_dir.joinpath(filename)
-                entries.append((m3u8_url, output))
-            except Exception:
-                logger.critical(
-                    "malformed line in batch mode manifest: %s",
-                    line,
-                    exc_info=args.debug,
-                )
-                if args.debug:
-                    raise
-                return 1
-
-        retvals = []
-        count = len(entries)
-        for i, (m3u8_url, output) in enumerate(entries):
-            sys.stderr.write(
-                f'[{i + 1}/{count}] Downloading {m3u8_url} into "{output}"...\n'
-            )
-            retvals.append(process_entry(m3u8_url, output, **kwargs))
-            sys.stderr.write("\n")
-        retval = int(any(retvals))
-        if retval == 0 and args.remove_manifest_on_success:
-            try:
-                manifest.unlink()
-            except OSError:
-                logger.error("cannot remove batch mode manifest")
-                if args.debug:
-                    raise
-                return 1
-        return retval
+    except KeyboardInterrupt:
+        return 1
 
 
 if __name__ == "__main__":
