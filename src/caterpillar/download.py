@@ -15,7 +15,6 @@ from .utils import (
     generate_m3u8,
     logger,
     monkeypatch_get_terminal_size,
-    should_log_warning,
     stub_context_manager,
 )
 
@@ -157,7 +156,9 @@ def download_m3u8_segments(
     remote_m3u8_url: str,
     remote_m3u8_file: pathlib.Path,
     local_m3u8_file: pathlib.Path,
+    *,
     jobs: int = None,
+    progress: bool = None,
 ) -> bool:
     if jobs is None:
         jobs = (os.cpu_count() or 4) * 2
@@ -197,7 +198,7 @@ def download_m3u8_segments(
             num_failure = 0
             logger.info(f"downloading {total} segments with {jobs} workers...")
             progress_bar_generator = (
-                click.progressbar if should_log_warning() else stub_context_manager
+                click.progressbar if progress else stub_context_manager
             )
             progress_bar_props = dict(
                 width=0,  # Full width

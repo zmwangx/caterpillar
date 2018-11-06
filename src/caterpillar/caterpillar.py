@@ -18,6 +18,7 @@ from .utils import (
     abspath,
     logger,
     increase_logging_verbosity,
+    should_log_warning,
 )
 from .version import __version__
 
@@ -265,6 +266,7 @@ def process_entry(
     jobs: int = None,
     concat_method: str = "concat_demuxer",
     retries: int = 0,
+    progress: bool = True,
 ) -> int:
     if output is None:
         stem = pathlib.Path(urllib.parse.urlsplit(m3u8_url).path).stem
@@ -334,7 +336,11 @@ def process_entry(
                 raise RuntimeError(f"failed to download {remote_m3u8_url}")
             logger.info(f"downloaded {remote_m3u8_file}")
             if not download.download_m3u8_segments(
-                remote_m3u8_url, remote_m3u8_file, local_m3u8_file, jobs=jobs
+                remote_m3u8_url,
+                remote_m3u8_file,
+                local_m3u8_file,
+                jobs=jobs,
+                progress=progress,
             ):
                 raise RuntimeError("failed to download some segments")
             merge.incremental_merge(
@@ -536,6 +542,16 @@ def main() -> int:
         help="increase logging verbosity (can be specified multiple times)",
     )
     add(
+        "--progress",
+        action="store_true",
+        help="show download progress bar regardless of verbosity level",
+    )
+    add(
+        "--no-progress",
+        action="store_true",
+        help="suppress download progress bar regardless of verbosity level",
+    )
+    add(
         "-q",
         "--quiet",
         action="count",
@@ -589,6 +605,13 @@ def main() -> int:
     elif args.concat_method == "1":
         args.concat_method = "concat_protocol"
 
+    if args.progress:
+        progress = True
+    elif args.no_progress:
+        progress = False
+    else:
+        progress = should_log_warning()
+
     kwargs = dict(
         force=args.force,
         exist_ok=args.batch and args.exist_ok,
@@ -599,6 +622,7 @@ def main() -> int:
         jobs=args.jobs,
         concat_method=args.concat_method,
         retries=args.retries,
+        progress=progress,
     )
 
     if shutil.which("ffmpeg") is None:
