@@ -133,9 +133,9 @@ def download_segment(
 # gracefully consumes KeyboardInterrupt.
 def _download_segment_mappable(args: Tuple[str, int, pathlib.Path, int]) -> bool:
     try:
-        *dl_args, logging_level = args
+        url, index, directory, logging_level = args
         logger.setLevel(logging_level)
-        return download_segment(*dl_args)
+        return download_segment(url, index, directory)
     except KeyboardInterrupt:
         url, *_ = args
         logger.debug(f"download of {url} has been interrupted")
