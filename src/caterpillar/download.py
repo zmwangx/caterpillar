@@ -49,12 +49,15 @@ def get_mtime(r: requests.Response) -> Optional[int]:
 def resumable_download(
     url: str, file: pathlib.Path, server_timestamp: bool = False
 ) -> bool:
+    headers = dict()
     existing_bytes = file.stat().st_size if file.is_file() else 0
+    if existing_bytes:
+        headers["Range"] = f"bytes={existing_bytes}-"
     try:
         logger.debug(f"GET {url}")
         r = requests.get(
             url,
-            headers={"Range": f"bytes={existing_bytes}-"},
+            headers=headers,
             stream=True,
             timeout=REQUESTS_TIMEOUT,
         )
