@@ -55,12 +55,7 @@ def resumable_download(
         headers["Range"] = f"bytes={existing_bytes}-"
     try:
         logger.debug(f"GET {url}")
-        r = requests.get(
-            url,
-            headers=headers,
-            stream=True,
-            timeout=REQUESTS_TIMEOUT,
-        )
+        r = requests.get(url, headers=headers, stream=True, timeout=REQUESTS_TIMEOUT)
         if r.status_code not in {200, 206}:
             logger.error(f"GET {url}: HTTP {r.status_code}")
             return False
