@@ -167,6 +167,8 @@ https://example.com/hls/3.m3u8	3.mp4
 
 The filenames (or paths) are relative to the parent directory of the manifest file. The tab character is not allowed in the filenames (or paths).
 
+Comments that start with `#` are allowed in the manifest file.
+
 Most options for normal mode are also allowed in the batch mode, as are options set in the configuration file.
 
 ## Configuration
