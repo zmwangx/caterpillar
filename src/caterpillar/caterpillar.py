@@ -410,8 +410,10 @@ def process_batch(
         return 1
 
     for line in manifest_content.splitlines():
+        # Strip BOM to accommodate Notepad users.
+        line = line.strip().lstrip("\uFEFF")
         try:
-            m3u8_url, filename = line.strip().split("\t")
+            m3u8_url, filename = line.split("\t")
             output = target_dir.joinpath(filename)
             entries.append((m3u8_url, output))
         except Exception:
