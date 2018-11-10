@@ -333,7 +333,10 @@ def process_entry(
     for ntry in range(max(retries, 0) + 1):
         try:
             if not download.download_m3u8_file(remote_m3u8_url, remote_m3u8_file):
-                raise RuntimeError(f"failed to download {remote_m3u8_url}")
+                # Return without retries because we already retried a
+                # couple of times in download_m3u8_file.
+                logger.critical(f"failed to download {remote_m3u8_url}")
+                return 1
             logger.info(f"downloaded {remote_m3u8_file}")
             if not download.download_m3u8_segments(
                 remote_m3u8_url,
