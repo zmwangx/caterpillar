@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import datetime
 import os
 import pathlib
 import shutil
@@ -253,6 +254,28 @@ def rmdir_p(path: pathlib.Path, *, root: pathlib.Path = None) -> None:
         path = path.parent
 
 
+# Returns the backup path.
+def move_to_backup(path: pathlib.Path) -> Optional[pathlib.Path]:
+    directory = path.parent
+    filename = path.name
+    backup = directory / f"{filename}.bak"
+    if backup.exists():
+        dedup = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
+        backup = directory / f"{filename}.{dedup}.bak"
+        if backup.exists():
+            index = 1
+            while backup.exists():
+                backup = directory / f"{filename}.{dedup}.bak.{index}"
+                index += 1
+    logger.info(f'moving "{path}" to "{backup}"...')
+    try:
+        os.rename(path, backup)
+        return backup
+    except OSError:
+        logger.error(f'failed to move "{path}" to "{backup}"')
+        return None
+
+
 def process_entry(
     m3u8_url: str,
     output: pathlib.Path,
@@ -294,6 +317,13 @@ def process_entry(
             )
             return 1
 
+    backup = None
+    if output.exists() and force:
+        backup = move_to_backup(output)
+        if backup is None:
+            logger.critical(f'failed to backup "{output}"')
+            return 1
+
     merge_dest = output
     if workroot:
         merge_dest = map_path(output, workroot)
@@ -305,17 +335,16 @@ def process_entry(
         )
         return 1
 
-    if not output.exists():
-        # Make sure output (especially if it's auto-deduced from URL, which
-        # might contain reserved characters on Windows) is a valid path and is
-        # writable.
-        try:
-            with open(output, "wb"):
-                pass
-            output.unlink()
-        except OSError:
-            logger.critical(f'"{output}" is not a valid path or is not writable')
-            return 1
+    # Make sure output (especially if it's auto-deduced from URL, which
+    # might contain reserved characters on Windows) is a valid path and is
+    # writable.
+    try:
+        with open(output, "wb"):
+            pass
+        output.unlink()
+    except OSError:
+        logger.critical(f'"{output}" is not a valid path or is not writable')
+        return 1
 
     remote_m3u8_url = m3u8_url
     working_directory = prepare_working_directory(
@@ -359,6 +388,14 @@ def process_entry(
                     logger.critical(f'failed to move "{merge_dest}" to "{output}"')
                     return 1
                 rmdir_p(merge_dest.parent, root=workroot)
+
+            if backup is not None:
+                try:
+                    logger.info(f'removing backup "{backup}"...')
+                    os.unlink(backup)
+                except OSError:
+                    logger.warning(f'failed to remove backup "{backup}"')
+
             try:
                 atime = time.time()
                 mtime = os.stat(remote_m3u8_file).st_mtime
@@ -366,6 +403,7 @@ def process_entry(
                 os.utime(output, times=(atime, mtime))
             except OSError:
                 logger.warning(f"failed to set mtime on {output}")
+
             if not keep:
                 try:
                     persistence.drop(remote_m3u8_url)
