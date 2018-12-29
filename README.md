@@ -1,4 +1,7 @@
-<h1 align="center">Caterpillar</h1>
+<h1 align="center">
+  Caterpillar<br>
+  <img src="https://raw.githubusercontent.com/zmwangx/caterpillar/master/assets/logo.png" alt="Caterpillar" width="691" height="112">
+</h1>
 
 <p align="center">
   <a href="https://pypi.python.org/pypi/caterpillar-hls"><img src="https://img.shields.io/pypi/v/caterpillar-hls.svg?maxAge=3600" alt="pypi"></a>
@@ -7,7 +10,6 @@
   <a href="https://travis-ci.org/zmwangx/caterpillar"><img src="https://travis-ci.org/zmwangx/caterpillar.svg?branch=master" alt="travis"></a>
 </p>
 
-<p align="center"><img src="https://user-images.githubusercontent.com/4149852/34367011-a9b11be8-ea72-11e7-8a96-ce34dae1eb0f.jpg" alt="Caterpillar" width="400" height="242"></p>
 
 `caterpillar` is a hardened HLS merger. It takes an HTTP Live Streaming VOD URL (typically an .m3u8 URL), downloads the video segments, and attempts to merge them into a single, coherent file. It is specially designed to combat timestamp discontinuities (symptom: a naive FFmpeg run spews tons of "Non-monotonous DTS in output stream" warning messages and ends up with a useless file with completely broken timestamps).
 
@@ -240,5 +242,3 @@ The word "caterpillar" starts with `cat(1)`, and the body of a caterpillar is se
 Copyright © 2017 Zhiming Wang
 
 This project is licensed under [the MIT license](https://opensource.org/licenses/MIT). See `COPYING` for details.
-
-[The image of the caterpillar](https://en.wikipedia.org/wiki/File:Chenille_de_Grand_porte_queue_(macaon).jpg) by Didier Descouens is distributed under the [Creative Commons Attribution-Share Alike 4.0 International (CC BY-SA 4.0)](https://creativecommons.org/licenses/by-sa/4.0/) license.
