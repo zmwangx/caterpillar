@@ -6,17 +6,21 @@ import setuptools
 
 
 HERE = pathlib.Path(__file__).resolve().parent
-with open(HERE / "src/caterpillar/version.py", encoding="utf-8") as fp:
+with HERE.joinpath("src/caterpillar/version.py").open(encoding="utf-8") as fp:
     exec(fp.read())
+with HERE.joinpath("README.md").open(encoding="utf-8") as fp:
+    long_description = fp.read()
 
 setuptools.setup(
     name="caterpillar-hls",
     version=__version__,
     description="Hardened HLS merger",
-    long_description="See https://github.com/zmwangx/caterpillar#readme.",
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     url="https://github.com/zmwangx/caterpillar",
     author="Zhiming Wang",
     author_email="zmwangx@gmail.com",
+    python_requires=">=3.6",
     license="MIT",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
