@@ -42,7 +42,7 @@ logger.addHandler(_sh)
 logger.setLevel(logging.WARNING)
 
 _dirs = xdgappdirs.AppDirs("caterpillar", "org.zhimingwang", roaming=True)
-UESR_CONFIG_DIR = os.getenv("CATERPILLAR_USER_CONFIG_DIR") or _dirs.user_config_dir
+USER_CONFIG_DIR = os.getenv("CATERPILLAR_USER_CONFIG_DIR") or _dirs.user_config_dir
 USER_DATA_DIR = os.getenv("CATERPILLAR_USER_DATA_DIR") or _dirs.user_data_dir
 USER_CONFIG_DISABLED = bool(os.getenv("CATERPILLAR_NO_USER_CONFIG"))
 CACHING_DISABLED = bool(os.getenv("CATERPILLAR_NO_CACHE"))

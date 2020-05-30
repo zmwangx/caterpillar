@@ -14,7 +14,7 @@ import peewee
 
 from . import download, merge, persistence
 from .utils import (
-    UESR_CONFIG_DIR,
+    USER_CONFIG_DIR,
     USER_CONFIG_DISABLED,
     abspath,
     logger,
@@ -24,7 +24,7 @@ from .utils import (
 from .version import __version__
 
 
-USER_CONFIG_FILE = pathlib.Path(UESR_CONFIG_DIR).joinpath("caterpillar.conf")
+USER_CONFIG_FILE = pathlib.Path(USER_CONFIG_DIR).joinpath("caterpillar.conf")
 
 
 ADDITIONAL_HELP_TEXT = f"""
