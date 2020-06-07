@@ -1,4 +1,6 @@
 import os
+import re
+import subprocess
 import sys
 
 import pytest
@@ -7,6 +9,15 @@ from caterpillar import caterpillar
 
 
 pytestmark = pytest.mark.usefixtures("chtmpdir")
+
+
+# Returns ffprobe output for the specified media file.
+def probe(file):
+    return subprocess.check_output(
+        ["ffprobe", "-hide_banner", file],
+        stderr=subprocess.STDOUT,
+        universal_newlines=True,
+    )
 
 
 class TestCaterpillar(object):
@@ -65,3 +76,12 @@ class TestCaterpillar(object):
         monkeypatch.setattr(sys, "argv", ["-", hls_server.good_playlist, "good.flv"])
         assert caterpillar.main() == 0
         assert os.path.isfile("good.flv")
+
+    def test_variant_streams(self, hls_server, monkeypatch):
+        monkeypatch.setattr(
+            sys, "argv", ["-", hls_server.variants_playlist, "variant.mp4"]
+        )
+        assert caterpillar.main() == 0
+        assert os.path.isfile("variant.mp4")
+        # Make sure the 720p variant is the one downloaded, not the 480p one.
+        assert re.search(r"Video:.*1280x720", probe("variant.mp4"))

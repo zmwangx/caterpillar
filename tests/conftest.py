@@ -20,6 +20,7 @@ class HLSServer(http.server.HTTPServer):
         self.good_playlist = self.server_root + "good.m3u8"
         self.empty_playlist = self.server_root + "empty.m3u8"
         self.adts_playlist = self.server_root + "adts.m3u8"
+        self.variants_playlist = self.server_root + "variants.m3u8"
 
         self.tmpdir = tempfile.mkdtemp()
         cwd = os.getcwd()
@@ -51,6 +52,20 @@ class HLSServer(http.server.HTTPServer):
                     "#EXT-X-TARGETDURATION:5\n"
                     "#EXT-X-ENDLIST\n"
                 )
+            # Generate variants.m3u8
+            subprocess.run(
+                "ffmpeg -loglevel warning "
+                "-f rawvideo -s hd720 -pix_fmt yuv420p -r 30 -t 30 -i /dev/zero "
+                "-map 0:0 -map 0:0 "
+                "-s:v:0 hd480 -b:v:0 500k "
+                "-s:v:1 hd720 -b:v:1 1000k "
+                "-f hls "
+                "-var_stream_map 'v:0 v:1' "
+                "-master_pl_name variants.m3u8 "
+                "-hls_playlist_type vod "
+                "variant-%v/index.m3u8",
+                shell=True,
+            )
         finally:
             os.chdir(cwd)
 
@@ -76,6 +91,7 @@ class HLSServerProcess(multiprocessing.Process):
                 good_playlist=server.good_playlist,
                 empty_playlist=server.empty_playlist,
                 adts_playlist=server.adts_playlist,
+                variants_playlist=server.variants_playlist,
                 tmpdir=server.tmpdir,
             )
         )
