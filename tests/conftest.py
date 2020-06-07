@@ -9,12 +9,11 @@ import tempfile
 import pytest
 
 
-class HLSServer(http.server.HTTPServer, multiprocessing.Process):
+class HLSServer(http.server.HTTPServer):
     def __init__(self):
         address = ("127.0.0.1", 0)
         handler = http.server.SimpleHTTPRequestHandler
-        http.server.HTTPServer.__init__(self, address, handler)
-        multiprocessing.Process.__init__(self)
+        super().__init__(address, handler)
 
         host, port = self.socket.getsockname()
         self.server_root = f"http://{host}:{port}/"
@@ -55,35 +54,53 @@ class HLSServer(http.server.HTTPServer, multiprocessing.Process):
         finally:
             os.chdir(cwd)
 
-    def __enter__(self):
-        self.start()
-        return self
-
-    def __exit__(self, *_):
-        os.kill(self.pid, signal.SIGINT)
-
-    def run(self):
-        cwd = os.getcwd()
-        try:
-            os.chdir(self.tmpdir)
-            self.serve_forever()
-        except KeyboardInterrupt:
-            self.shutdown()
-            self.server_close()
-            self.teardown()
-        finally:
-            os.chdir(cwd)
-
     def teardown(self):
+        self.shutdown()
+        self.server_close()
         try:
             shutil.rmtree(self.tmpdir)
         except OSError:
             pass
 
 
+class HLSServerProcess(multiprocessing.Process):
+    def __init__(self):
+        super().__init__()
+        self._queue = multiprocessing.Queue()
+
+    def run(self):
+        server = HLSServer()
+        self._queue.put(
+            dict(
+                server_root=server.server_root,
+                good_playlist=server.good_playlist,
+                empty_playlist=server.empty_playlist,
+                adts_playlist=server.adts_playlist,
+                tmpdir=server.tmpdir,
+            )
+        )
+        cwd = os.getcwd()
+        try:
+            os.chdir(server.tmpdir)
+            server.serve_forever()
+        except KeyboardInterrupt:
+            server.teardown()
+        finally:
+            os.chdir(cwd)
+
+    def __enter__(self):
+        self.start()
+        conf = self._queue.get()
+        self.__dict__.update(**conf)
+        return self
+
+    def __exit__(self, *_):
+        os.kill(self.pid, signal.SIGINT)
+
+
 @pytest.fixture(scope="session")
 def hls_server():
-    with HLSServer() as server:
+    with HLSServerProcess() as server:
         yield server
 
 
