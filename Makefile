@@ -1,4 +1,23 @@
-.PHONY: dist tests qa flake8 pylint mypy
+.PHONY: all dist tests qa flake8 pylint mypy
+
+all: qa
+
+tests:
+	pytest
+
+qa: black flake8 pylint mypy
+
+black:
+	git ls-files | grep '\.py$$' | xargs black --quiet --check --diff
+
+flake8:
+	flake8 src/caterpillar tests
+
+pylint:
+	pylint src/caterpillar tests
+
+mypy:
+	mypy src/caterpillar
 
 dist:
 	@- $(RM) -r build
@@ -16,20 +35,3 @@ dist:
 	  esac							\
 	done
 	scripts/bump-to-dev-version
-
-tests:
-	tox
-
-qa: flake8 pylint mypy black
-
-flake8:
-	flake8 src/caterpillar tests
-
-pylint:
-	pylint src/caterpillar tests
-
-mypy:
-	mypy src/caterpillar
-
-black:
-	git ls-files | grep '\.py$$' | xargs black --check --diff
