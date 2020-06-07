@@ -72,11 +72,6 @@ class TestCaterpillar(object):
         assert os.path.isdir("empty")
         assert not os.path.isfile("empty.mp4")
 
-    def test_containers(self, hls_server, monkeypatch):
-        monkeypatch.setattr(sys, "argv", ["-", hls_server.good_playlist, "good.flv"])
-        assert caterpillar.main() == 0
-        assert os.path.isfile("good.flv")
-
     def test_variant_streams(self, hls_server, monkeypatch):
         monkeypatch.setattr(
             sys, "argv", ["-", hls_server.variants_playlist, "variant.mp4"]
