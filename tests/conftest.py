@@ -88,17 +88,24 @@ class HLSServerProcess(multiprocessing.Process):
         self._queue = multiprocessing.Queue()
 
     def run(self):
-        server = HLSServer()
-        self._queue.put(
-            dict(
-                server_root=server.server_root,
-                good_playlist=server.good_playlist,
-                empty_playlist=server.empty_playlist,
-                adts_playlist=server.adts_playlist,
-                variants_playlist=server.variants_playlist,
-                tmpdir=server.tmpdir,
+        try:
+            server = HLSServer()
+            self._queue.put(
+                (
+                    dict(
+                        server_root=server.server_root,
+                        good_playlist=server.good_playlist,
+                        empty_playlist=server.empty_playlist,
+                        adts_playlist=server.adts_playlist,
+                        variants_playlist=server.variants_playlist,
+                        tmpdir=server.tmpdir,
+                    ),
+                    None,
+                )
             )
-        )
+        except Exception as exc:
+            self._queue.put((None, exc))
+            return
         cwd = os.getcwd()
         try:
             os.chdir(server.tmpdir)
@@ -110,7 +117,9 @@ class HLSServerProcess(multiprocessing.Process):
 
     def __enter__(self):
         self.start()
-        conf = self._queue.get()
+        conf, exc = self._queue.get()
+        if exc:
+            raise exc
         self.__dict__.update(**conf)
         return self
 
