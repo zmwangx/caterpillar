@@ -37,7 +37,7 @@ def attempt_merge(
     if len(m3u8_obj.segments) == 1:
         # Only one segment, cannot further subdivide, so ignore whatever
         # problems there may be.
-        logger.info(f"only one segment in playlist; ignoring errors and warnings")
+        logger.info("only one segment in playlist; ignoring errors and warnings")
         ignore_errors = True
 
     regular_pattern = re.compile(r"Opening '(?P<path>.*\.ts)' for reading")

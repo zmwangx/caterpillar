@@ -32,17 +32,20 @@ class HLSServer(http.server.HTTPServer):
                 "-f rawvideo -s hd720 -pix_fmt yuv420p -r 30 -t 30 -i /dev/zero "
                 "-f hls -hls_playlist_type vod -y good.m3u8",
                 shell=True,
+                check=True,
             )
             # Generate adts.m3u8 (AAC stream with ADTS headers)
             subprocess.run(
                 "ffmpeg -loglevel warning "
                 "-f lavfi -i anullsrc -t 30 -f adts -y adts.aac",
                 shell=True,
+                check=True,
             )
             subprocess.run(
                 "ffmpeg -loglevel warning "
                 "-i adts.aac -f hls -hls_playlist_type vod -y adts.m3u8",
                 shell=True,
+                check=True,
             )
             # Generate empty.m3u8
             with open("empty.m3u8", "w", encoding="utf-8") as fp:
@@ -65,6 +68,7 @@ class HLSServer(http.server.HTTPServer):
                 "-hls_playlist_type vod "
                 "variant-%v/index.m3u8",
                 shell=True,
+                check=True,
             )
         finally:
             os.chdir(cwd)

@@ -352,7 +352,7 @@ def process_entry(
         return 1
 
     if not output.suffix:
-        logger.critical(f"output must have a suffix, e.g., .mp4")
+        logger.critical("output must have a suffix, e.g., .mp4")
         return 1
 
     if output.exists() and not force:
