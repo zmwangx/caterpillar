@@ -69,6 +69,7 @@ def attempt_merge(
         encoding="utf-8",
         errors="backslashreplace",
     )
+    assert p.stderr is not None
     last_read_segment = None
     for line in p.stderr:
         m = regular_pattern.search(line)

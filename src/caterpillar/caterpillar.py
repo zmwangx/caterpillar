@@ -432,7 +432,7 @@ def process_entry(
             if output != merge_dest:
                 try:
                     logger.info(f'moving "{merge_dest}" to "{output}"...')
-                    shutil.move(merge_dest, output)
+                    shutil.move(str(merge_dest), output)
                 except OSError:
                     # This is unlikely a quickly retriable issue, so we
                     # return an error immediately.
