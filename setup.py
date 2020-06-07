@@ -38,6 +38,6 @@ setuptools.setup(
     package_dir={"": "src"},
     packages=["caterpillar"],
     install_requires=["xdgappdirs>=1.4.4.3", "click", "m3u8", "peewee", "requests"],
-    extras_require={"dev": ["black", "flake8", "mypy", "pylint", "pytest", "tox"]},
+    extras_require={"dev": ["black", "flake8", "mypy", "pylint", "pytest"]},
     entry_points={"console_scripts": ["caterpillar=caterpillar.caterpillar:main"]},
 )
