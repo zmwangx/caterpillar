@@ -7,6 +7,7 @@
   <a href="https://pypi.python.org/pypi/caterpillar-hls"><img src="https://img.shields.io/pypi/v/caterpillar-hls.svg?maxAge=3600" alt="pypi"></a>
   <img src="https://img.shields.io/badge/python-3.6,%203.7-blue.svg?maxAge=86400" alt="python: 3.6, 3.7">
   <img src="https://img.shields.io/badge/license-MIT-blue.svg?maxAge=86400" alt="license: MIT">
+  <a href="https://github.com/zmwangx/caterpillar/actions"><img src="https://github.com/zmwangx/caterpillar/workflows/test/badge.svg?branch=master" alt="Build Status" /></a>
 </p>
 
 
