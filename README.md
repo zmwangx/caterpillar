@@ -206,7 +206,9 @@ The syntax of the configuration file is documented in the template (automaticall
 
 ## Notes and limitations
 
-- [`EXT-X-STREAM-INF` (and `EXT-X-I-FRAME-STREAM-INF` by extension)](https://tools.ietf.org/html/rfc8216#section-4.3.4.2), despite being part of protocol version 1, is not supported due to complexity and inherent conflict with caterpillar's working model (only one rendition is allowed). One has to preprocess a stream with `EXT-X-STREAM-INF` and pick out the variant stream to be used with caterpillar.
+- [`EXT-X-MEDIA`](https://tools.ietf.org/html/rfc8216#section-4.3.4.1) for alternative renditions are not supported since multiple playlists need to be downloaded, merged, and muxed, which is beyond the current scope of this tool.
+
+- [`EXT-X-STREAM-INF`](https://tools.ietf.org/html/rfc8216#section-4.3.4.2) variant streams are only partially supported: when two or more variant streams are present, the best one (selected based on higher resolution, higher average bandwidth, and higher bandwidth, in that order) is automatically selected; there is no mechanism for users to select another variant at the moment. In addition, `AUDIO`, `VIDEO`, `SUBTITLES` or `CLOSED-CAPTIONS` attributes referencing `EXT-X-MEDIA` tags are not supported.
 
   Efforts could be made to extract the variant streams and show them to the user, and it is even feasible to proceed with the download if only one variant stream is present. Contribution is welcome for this feature.
 

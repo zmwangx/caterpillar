@@ -8,11 +8,12 @@ import shutil
 import sys
 import time
 import urllib.parse
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
+import m3u8
 import peewee
 
-from . import download, merge, persistence
+from . import download, merge, persistence, variants
 from .utils import (
     USER_CONFIG_DIR,
     USER_CONFIG_DISABLED,
@@ -276,6 +277,53 @@ def move_to_backup(path: pathlib.Path) -> Optional[pathlib.Path]:
         return None
 
 
+# Download m3u8_url to the designated path. If there are variant streams
+# in the m3u8 file, select a variant, resolve the URL, and download to
+# the designated path with variant_suffix appended to the stem of the
+# filename. Repeat this process until there are no longer variant streams.
+#
+# Returns the final resolved url and file path. Returned file path is
+# None if there's an error along the way.
+#
+# Naming example:
+#   remote.m3u8 => remote.variant.m3u8 => remote.variant.variant.m3u8 => ...
+def download_m3u8_file_and_resolve_variants(
+    m3u8_url: str, m3u8_file: pathlib.Path, *, variant_suffix=".variant"
+) -> Tuple[str, Optional[pathlib.Path]]:
+    while True:
+        if not download.download_m3u8_file(m3u8_url, m3u8_file):
+            logger.error(f"failed to download {m3u8_url}")
+            return m3u8_url, None
+
+        try:
+            m3u8_obj = m3u8.load(str(m3u8_file))
+        except Exception:
+            logger.exc_error(f"failed to parse {m3u8_file}")
+            return m3u8_url, None
+
+        if not m3u8_obj.is_variant:
+            return m3u8_url, m3u8_file
+
+        variant_count = len(m3u8_obj.playlists)
+        if variant_count == 0:
+            # This branch shouldn't be reachable.
+            logger.error(f"found 0 variant streams in {m3u8_file}")
+            return m3u8_url, None
+
+        selected_variant = variants.select_variant(m3u8_obj)
+        if variant_count == 1:
+            logger.info(f"found 1 variant stream in {m3u8_file}")
+        else:
+            selected_variant_spec = str(selected_variant).replace("\n", " ")
+            logger.warning(
+                f"found {variant_count} variant streams in {m3u8_file}; "
+                f"selected variant {selected_variant_spec}"
+            )
+        m3u8_url = urllib.parse.urljoin(m3u8_url, selected_variant.uri)
+        logger.info(f"resolved to {m3u8_url}")
+        m3u8_file = m3u8_file.with_suffix(variant_suffix + m3u8_file.suffix)
+
+
 def process_entry(
     m3u8_url: str,
     output: pathlib.Path,
@@ -361,10 +409,13 @@ def process_entry(
     local_m3u8_file = working_directory / "local.m3u8"
     for ntry in range(max(retries, 0) + 1):
         try:
-            if not download.download_m3u8_file(remote_m3u8_url, remote_m3u8_file):
+            remote_m3u8_url, remote_m3u8_file = download_m3u8_file_and_resolve_variants(
+                remote_m3u8_url, remote_m3u8_file
+            )
+            if not remote_m3u8_file:
                 # Return without retries because we already retried a
                 # couple of times in download_m3u8_file.
-                logger.critical(f"failed to download {remote_m3u8_url}")
+                logger.critical(f"failed to download and resolve {remote_m3u8_url}")
                 return 1
             logger.info(f"downloaded {remote_m3u8_file}")
             if not download.download_m3u8_segments(
