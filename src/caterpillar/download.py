@@ -5,12 +5,20 @@ import pathlib
 import signal
 import time
 import urllib.parse
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple
 
 import click
 import m3u8
 import requests
 
+from .events import (
+    EventHook,
+    SegmentsDownloadInitiatedEvent,
+    SegmentsDownloadFinishedEvent,
+    SegmentDownloadSucceededEvent,
+    SegmentDownloadFailedEvent,
+    emit_event,
+)
 from .utils import (
     generate_m3u8,
     logger,
@@ -114,13 +122,15 @@ def download_m3u8_file(m3u8_url: str, file: pathlib.Path) -> bool:
     return resumable_download_with_retries(m3u8_url, file, server_timestamp=True)
 
 
-# Returns a bool indicating success (True) or failure (False).
+# Returns the path to the downloaded segment on success, otherwise None.
 def download_segment(
     url: str, index: int, directory: pathlib.Path, max_retries: int = 2
-) -> bool:
-    return resumable_download_with_retries(
-        url, directory / f"{index}.ts", max_retries=max_retries
-    )
+) -> Optional[pathlib.Path]:
+    file = directory / f"{index}.ts"
+    if resumable_download_with_retries(url, file, max_retries=max_retries):
+        return file
+    else:
+        return None
 
 
 # download_segment wrapper that takes all arguments as a single tuple
@@ -129,15 +139,19 @@ def download_segment(
 # the worker processes do not actually inherit logger level), so that we
 # can use it with multiprocessing.pool.Pool.map and company. It also
 # gracefully consumes KeyboardInterrupt.
-def _download_segment_mappable(args: Tuple[str, int, pathlib.Path, int]) -> bool:
+#
+# Returns (url, index, downloaded_path), where downloaded_path is None
+# if download failed.
+def _download_segment_mappable(
+    args: Tuple[str, int, pathlib.Path, int]
+) -> Tuple[str, int, Optional[pathlib.Path]]:
+    url, index, directory, logging_level = args
     try:
-        url, index, directory, logging_level = args
         logger.setLevel(logging_level)
-        return download_segment(url, index, directory)
+        return url, index, download_segment(url, index, directory)
     except KeyboardInterrupt:
-        url, *_ = args
         logger.debug(f"download of {url} has been interrupted")
-        return False
+        return url, index, None
 
 
 def _raise_keyboard_interrupt(signum, _):
@@ -162,9 +176,13 @@ def download_m3u8_segments(
     *,
     jobs: int = None,
     progress: bool = None,
+    event_hooks: Sequence[EventHook] = None,
 ) -> bool:
     if jobs is None:
         jobs = (os.cpu_count() or 4) * 2
+
+    if event_hooks is None:
+        event_hooks = []
 
     try:
         remote_m3u8_obj = m3u8.load(str(remote_m3u8_file))
@@ -191,6 +209,7 @@ def download_m3u8_segments(
         return False
     jobs = min(jobs, total)
     with multiprocessing.Pool(jobs) as pool:
+        emit_event(SegmentsDownloadInitiatedEvent(segment_count=total), event_hooks)
         # For the duration of the worker pool, map SIGTERM to SIGINT on
         # the main process. We only do this after the fork, and restore
         # the original SIGTERM handler (usually SIG_DFL) at the end of
@@ -211,16 +230,30 @@ def download_m3u8_segments(
                 length=total,
             )
             with progress_bar_generator(**progress_bar_props) as bar:  # type: ignore
-                for success in pool.imap_unordered(
+                for segment_url, _, downloaded_path in pool.imap_unordered(
                     _download_segment_mappable, download_args
                 ):
-                    if success:
+                    if downloaded_path:
                         num_success += 1
+                        emit_event(
+                            SegmentDownloadSucceededEvent(path=downloaded_path),
+                            event_hooks,
+                        )
                     else:
                         num_failure += 1
+                        emit_event(
+                            SegmentDownloadFailedEvent(segment_url=segment_url),
+                            event_hooks,
+                        )
                     logger.debug(f"progress: {num_success}/{num_failure}/{total}")
                     bar.update(1)
 
+            emit_event(
+                SegmentsDownloadFinishedEvent(
+                    success_count=num_success, failure_count=num_failure
+                ),
+                event_hooks,
+            )
             if num_failure > 0:
                 logger.error(f"failed to download {num_failure} segments")
                 return False

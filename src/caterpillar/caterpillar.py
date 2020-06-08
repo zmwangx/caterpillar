@@ -8,12 +8,13 @@ import shutil
 import sys
 import time
 import urllib.parse
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 
 import m3u8
 import peewee
 
 from . import download, merge, persistence, variants
+from .events import EventHook, MergeFinishedEvent, emit_event
 from .utils import (
     USER_CONFIG_DIR,
     USER_CONFIG_DISABLED,
@@ -338,7 +339,11 @@ def process_entry(
     concat_method: str = "concat_demuxer",
     retries: int = 0,
     progress: bool = True,
+    event_hooks: Sequence[EventHook] = None,
 ) -> int:
+    if event_hooks is None:
+        event_hooks = []
+
     if output is None:
         stem = pathlib.Path(urllib.parse.urlsplit(m3u8_url).path).stem
         if not stem or stem.startswith("."):
@@ -424,6 +429,7 @@ def process_entry(
                 local_m3u8_file,
                 jobs=jobs,
                 progress=progress,
+                event_hooks=event_hooks,
             ):
                 raise RuntimeError("failed to download some segments")
             merge.incremental_merge(
@@ -454,6 +460,8 @@ def process_entry(
                 os.utime(output, times=(atime, mtime))
             except OSError:
                 logger.warning(f"failed to set mtime on {output}")
+
+            emit_event(MergeFinishedEvent(path=output), event_hooks)
 
             if not keep:
                 try:
