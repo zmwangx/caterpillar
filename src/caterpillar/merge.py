@@ -232,8 +232,8 @@ def incremental_merge(
             command = [
                 "ffmpeg",
                 "-hide_banner",
+                "-loglevel",
                 f"level+{loglevel}",
-                "info",
                 "-i",
                 ffmpeg_input,
                 "-c",
