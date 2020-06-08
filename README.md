@@ -25,6 +25,7 @@
 - [Installation](#installation)
   - [For end users](#for-end-users)
   - [For developers and beta testers](#for-developers-and-beta-testers)
+  - [For application developers](#for-application-developers)
 - [Usage](#usage)
 - [Batch mode](#batch-mode)
 - [Configuration](#configuration)
@@ -75,6 +76,12 @@ To update to the latest master,
 cd /path/to/caterpillar
 git pull origin master
 ```
+
+### For application developers
+
+Short of calling `caterpillar.caterpillar.main` with `sys.argv` set appropriately, you can access caterpillar's functionality through `caterpillar.caterpillar.process_entry` and `caterpillar.caterpillar.process_batch`. Warning: there's no stability guarantee to these interfaces, although I won't break compatibility without a very compelling reason.
+
+`process_entry` and `process_batch` additionally support event hooks (a feature not exposed to end users). See [`caterpillar.caterpillar.events`](https://github.com/zmwangx/caterpillar/blob/master/src/caterpillar/events.py) for types of events emitted and associated data attributes.
 
 ## Usage
 
