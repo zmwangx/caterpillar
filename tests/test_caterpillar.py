@@ -1,11 +1,13 @@
 import os
 import re
+import pathlib
 import subprocess
 import sys
 
 import pytest
 
 from caterpillar import caterpillar
+from caterpillar.events import EventType
 
 
 pytestmark = pytest.mark.usefixtures("chtmpdir")
@@ -80,3 +82,27 @@ class TestCaterpillar(object):
         assert os.path.isfile("variant.mp4")
         # Make sure the 720p variant is the one downloaded, not the 480p one.
         assert re.search(r"Video:.*1280x720", probe("variant.mp4"))
+
+    def test_event_hooks(self, hls_server):
+        seen_event_types = set()
+
+        def event_hook(event):
+            seen_event_types.add(event.event_type)
+
+        assert (
+            caterpillar.process_entry(
+                hls_server.good_playlist,
+                pathlib.Path("good.mp4"),
+                event_hooks=[event_hook],
+            )
+            == 0
+        )
+        assert os.path.isfile("good.mp4")
+        assert seen_event_types >= set(
+            [
+                EventType.SEGMENTS_DOWNLOAD_INITIATED,
+                EventType.SEGMENT_DOWNLOAD_SUCCEEDED,
+                EventType.SEGMENTS_DOWNLOAD_FINISHED,
+                EventType.MERGE_FINISHED,
+            ]
+        )
