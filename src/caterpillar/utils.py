@@ -1,12 +1,33 @@
 import contextlib
+import enum
 import logging
 import os
 import pathlib
+import re
 import shutil
 import sys
-from typing import Iterable, Tuple, cast
+from typing import Iterable, Optional, Tuple, cast
 
 import xdgappdirs
+
+
+class FFmpegLogLevel(enum.IntEnum):
+    quiet = -8
+    panic = 0
+    fatal = 8
+    error = 16
+    warning = 24
+    info = 32
+    verbose = 40
+    debug = 48
+    trace = 56
+
+    def __str__(self) -> str:
+        # pylint: disable=invalid-str-returned
+        return self.name
+
+    def __format__(self, format_spec: str) -> str:
+        return self.__str__()
 
 
 class Logger(logging.Logger):
@@ -68,6 +89,40 @@ def should_log_info():
 
 def should_log_debug():
     return logger.isEnabledFor(logging.DEBUG)
+
+
+def ffmpeg_loglevel(*, minimum: FFmpegLogLevel = None) -> FFmpegLogLevel:
+    logger_level = logger.getEffectiveLevel() or logging.WARNING
+    if logger_level == logging.CRITICAL:
+        loglevel = FFmpegLogLevel.fatal
+    elif logger_level == logging.ERROR:
+        loglevel = FFmpegLogLevel.error
+    elif logger_level == logging.WARNING:
+        loglevel = FFmpegLogLevel.warning
+    elif logger_level == logging.INFO:
+        loglevel = FFmpegLogLevel.info
+    elif logger_level == logging.DEBUG:
+        loglevel = FFmpegLogLevel.verbose
+    return max(loglevel, minimum) if minimum is not None else loglevel
+
+
+LOG_ENTRY_WITH_LEVEL_PATTERN = re.compile(
+    r"""
+    ^
+    (\[(?P<component>[^]]+)\]\ )?  # e.g. [libx264 @ 0x7fc93081d600]
+    \[(?P<level>quiet|panic|fatal|error|warning|info|verbose|debug|trace)\]
+    .*
+    """,
+    re.VERBOSE,
+)
+
+
+# Extracts loglevel of a log entry in ffmpeg output.
+#
+# ffmpeg must be invoked with -loglevel level+<level>.
+def ffmpeg_log_entry_get_loglevel(line: str) -> Optional[FFmpegLogLevel]:
+    m = LOG_ENTRY_WITH_LEVEL_PATTERN.search(line)
+    return FFmpegLogLevel[m["level"]] if m else None
 
 
 # Returns the qualified name of an exeception.
