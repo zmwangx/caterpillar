@@ -265,6 +265,6 @@ def download_m3u8_segments(
             pool.join()
             logger.critical("interrupted")
             # Bubble KeyboardInterrupt to stop retries.
-            raise KeyboardInterrupt
+            raise
         finally:
             signal.signal(signal.SIGTERM, old_sigterm_handler)

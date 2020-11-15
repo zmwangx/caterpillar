@@ -254,6 +254,6 @@ def incremental_merge(
             subprocess.run(command, stdin=subprocess.DEVNULL, check=True)
         except subprocess.CalledProcessError as e:
             logger.error(f"ffmpeg failed with exit status {e.returncode}")
-            raise RuntimeError("unknown error occurred during merging")
+            raise RuntimeError("unknown error occurred during merging") from e
         else:
             logger.info(f"merged into {output}")
