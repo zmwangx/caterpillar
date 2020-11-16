@@ -1,5 +1,6 @@
 [MESSAGES CONTROL]
-disable=R,C,broad-except,global-statement,logging-fstring-interpolation
+# TODO: drop unsubscriptable-object once https://github.com/PyCQA/pylint/issues/3882 is resolved.
+disable=R,C,broad-except,global-statement,logging-fstring-interpolation,unsubscriptable-object
 ignored-classes=PurePath,M3U8
 
 [REPORTS]
